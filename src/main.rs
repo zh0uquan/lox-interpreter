@@ -2,6 +2,7 @@ mod scanner;
 use std::env;
 use std::fs;
 use std::io::{self, Write};
+use std::process::exit;
 use crate::scanner::{add_eof, scan};
 
 fn main() {
@@ -26,9 +27,9 @@ fn main() {
 
             // Uncomment this block to pass the first stage
             if !file_contents.is_empty() {
-                let output = scan(file_contents);
-                let output = add_eof(output);
-                println!("{output}");
+                let exit_status= scan(file_contents);
+                println!("{}", exit_status.output);
+                std::process::exit(exit_status.exit_code)
             } else {
                 println!("EOF  null"); // Placeholder, remove this line when implementing the scanner
             }

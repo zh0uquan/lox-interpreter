@@ -1,12 +1,21 @@
-use std::iter::zip;
-
-pub fn scan(file_content: String) -> String {
-    file_content.lines().enumerate().map(
-        |(lineno, line)| scan_line(line, lineno + 1)
-    ).collect()
+pub struct ExitStatus {
+    pub exit_code: i32, 
+    pub output: String
 }
 
-fn scan_line(line: &str, lineno: usize) -> String {
+
+pub fn scan(file_content: String) -> ExitStatus {
+    let mut exit_code = 0;
+    let output = file_content.lines()
+        .enumerate()
+        .map(
+            |(lineno, line)| scan_line(line, lineno + 1, &mut exit_code)
+        ).collect();
+    let output = add_eof(output);
+    ExitStatus {exit_code, output}
+}
+
+fn scan_line(line: &str, lineno: usize, exit_code: &mut i32) -> String {
     line.chars().map(|c| match c {
         '(' => add_token(c, "LEFT_PAREN"),
         ')' => add_token(c, "RIGHT_PAREN"),
@@ -18,7 +27,10 @@ fn scan_line(line: &str, lineno: usize) -> String {
         '+' => add_token(c, "PLUS"),
         '-' => add_token(c, "MINUS"),
         ';' => add_token(c, "SEMICOLON"),
-        _ => raise_err(c, lineno)
+        _ => {
+            *exit_code = 65;
+            raise_err(c, lineno)
+        }
     }).collect()
 }
 fn add_token(ch: char, token: &str) -> String {
@@ -41,44 +53,47 @@ mod tests {
     #[test]
     fn test_scan() {
         // Test for parentheses
+        let result = scan("(()".into());
         assert_eq!(
-            scan("(()".into()),
-            "LEFT_PAREN ( null\nLEFT_PAREN ( null\nRIGHT_PAREN ) null\n"
+            result.output,
+            "LEFT_PAREN ( null\nLEFT_PAREN ( null\nRIGHT_PAREN ) null\nEOF  null"
         );
+        assert_eq!(result.exit_code, 0);
 
         // Test for braces
+        let result = scan("{{}".into());
         assert_eq!(
-            scan("{{}".into()), 
-            "LEFT_BRACE { null\nLEFT_BRACE { null\nRIGHT_BRACE } null\n"
+            result.output,
+            "LEFT_BRACE { null\nLEFT_BRACE { null\nRIGHT_BRACE } null\nEOF  null"
         );
+        assert_eq!(result.exit_code, 0);
 
         // Test for unexpected characters
-        let result = std::panic::catch_unwind(|| scan("abc".into()));
-        assert!(result.is_err());
-
-        // Test for adding EOF
-        assert_eq!(
-            add_eof("content ".into()),
-            "content EOF  null"
-        );
-
-        // Test for adding EOF to empty string
-        assert_eq!(
-            add_eof("".into()),
-            "EOF  null"
-        );
+        let result = scan("abc".into());
+        assert!(result.output.contains("Error: Unexpected character"));
+        assert_eq!(result.exit_code, 65);
 
         // Test for symbols * . , +
+        let result = scan("*.,+".into());
         assert_eq!(
-            scan("*.,+".into()),
-            "STAR * null\nDOT . null\nCOMMA , null\nPLUS + null\n"
+            result.output,
+            "STAR * null\nDOT . null\nCOMMA , null\nPLUS + null\nEOF  null"
         );
+        assert_eq!(result.exit_code, 0);
 
         // Test for mixed characters
+        let result = scan("*(+}".into());
         assert_eq!(
-            scan("*(+}".into()),
-            "STAR * null\nLEFT_PAREN ( null\nPLUS + null\nRIGHT_BRACE } null\n"
+            result.output,
+            "STAR * null\nLEFT_PAREN ( null\nPLUS + null\nRIGHT_BRACE } null\nEOF  null"
         );
+        assert_eq!(result.exit_code, 0);
+        
+        // Test for unexpected characters with special symbols
+        let result = scan("$#*(+}".into());
+        assert!(result.output.contains("Error: Unexpected character: $"));
+        assert!(result.output.contains("Error: Unexpected character: #"));
+        assert_eq!(result.exit_code, 65);
     }
 
     #[test]
