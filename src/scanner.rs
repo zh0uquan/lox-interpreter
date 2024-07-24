@@ -49,7 +49,7 @@ pub fn add_eof(s: String) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_scan() {
         // Test for parentheses
