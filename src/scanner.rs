@@ -10,6 +10,8 @@ pub fn scan(file_content: String) -> String {
         '.' => "DOT",
         ',' => "COMMA",
         '+' => "PLUS",
+        '-' => "MINUS",
+        ';' => "SEMICOLON",
         _ => unimplemented!("skip"),
     });
 
