@@ -6,6 +6,8 @@ pub fn scan(file_content: String) -> String {
             |c| match c { 
                 '(' => "LEFT_PAREN",
                 ')' => "RIGHT_PAREN",
+                '{' => "LEFT_BRACE",
+                '}' => "RIGHT_BRACE",
                 _ => unimplemented!("skip")
             }
         );
@@ -22,17 +24,42 @@ pub fn add_eof(s: String) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
-    fn test_scan() {
+    fn test_scan_parentheses() {
         assert_eq!(
-            scan(String::from("(()")),
-            String::from("LEFT_PAREN ( null\nLEFT_PAREN ( null\nRIGHT_PAREN ) null\n")
+            scan("(()".into()),
+            "LEFT_PAREN ( null\nLEFT_PAREN ( null\nRIGHT_PAREN ) null\n"
         );
     }
     
     #[test]
+    fn test_scan_braces() {
+        assert_eq!(
+            scan("{{}".into()), 
+            "LEFT_BRACE { null\nLEFT_BRACE { null\nRIGHT_BRACE } null\n"
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "skip")]
+    fn test_scan_unexpected_characters() {
+        scan("abc".into());
+    }
+
+    #[test]
     fn test_add_eof() {
-        assert_eq!(add_eof(String::from("\n")), String::from("\nEOF  null"))
+        assert_eq!(
+            add_eof("content ".into()),
+            "content EOF  null"
+        );
+    }
+
+    #[test]
+    fn test_add_eof_empty_string() {
+        assert_eq!(
+            add_eof("".into()),
+            "EOF  null"
+        );
     }
 }
