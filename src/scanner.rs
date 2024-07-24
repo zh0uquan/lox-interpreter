@@ -11,7 +11,7 @@ pub fn scan(file_content: String) -> String {
         );
     
     zip(file_content.chars(), parsed).map(
-        |(ch, identifier)| format!("{identifier} {ch} NULL\n")
+        |(ch, identifier)| format!("{identifier} {ch} null\n")
     ).collect()
 }
 
@@ -27,7 +27,7 @@ mod tests {
     fn test_scan() {
         assert_eq!(
             scan(String::from("(()")),
-            String::from("LEFT_PAREN ( NULL\nLEFT_PAREN ( NULL\nRIGHT_PAREN ) NULL\n")
+            String::from("LEFT_PAREN ( null\nLEFT_PAREN ( null\nRIGHT_PAREN ) null\n")
         );
     }
     
