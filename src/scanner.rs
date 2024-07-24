@@ -1,24 +1,34 @@
 use std::iter::zip;
 
 pub fn scan(file_content: String) -> String {
-    let parsed = file_content.chars().map(|c| match c {
-        '(' => "LEFT_PAREN",
-        ')' => "RIGHT_PAREN",
-        '{' => "LEFT_BRACE",
-        '}' => "RIGHT_BRACE", 
-        '*' => "STAR",
-        '.' => "DOT",
-        ',' => "COMMA",
-        '+' => "PLUS",
-        '-' => "MINUS",
-        ';' => "SEMICOLON",
-        _ => unimplemented!("skip"),
-    });
-
-    zip(file_content.chars(), parsed)
-        .map(|(ch, identifier)| format!("{identifier} {ch} null\n"))
-        .collect()
+    file_content.lines().enumerate().map(
+        |(lineno, line)| scan_line(line, lineno + 1)
+    ).collect()
 }
+
+fn scan_line(line: &str, lineno: usize) -> String {
+    line.chars().map(|c| match c {
+        '(' => add_token(c, "LEFT_PAREN"),
+        ')' => add_token(c, "RIGHT_PAREN"),
+        '{' => add_token(c, "LEFT_BRACE"),
+        '}' => add_token(c, "RIGHT_BRACE"),
+        '*' => add_token(c, "STAR"),
+        '.' => add_token(c, "DOT"),
+        ',' => add_token(c, "COMMA"),
+        '+' => add_token(c, "PLUS"),
+        '-' => add_token(c, "MINUS"),
+        ';' => add_token(c, "SEMICOLON"),
+        _ => raise_err(c, lineno)
+    }).collect()
+}
+fn add_token(ch: char, token: &str) -> String {
+    format!("{token} {ch} null\n")
+}
+
+fn raise_err(ch: char, lineno: usize) -> String {
+    format!("[line {lineno}] Error: Unexpected character: {ch}\n")
+}
+
 
 pub fn add_eof(s: String) -> String {
     format!("{s}EOF  null")
