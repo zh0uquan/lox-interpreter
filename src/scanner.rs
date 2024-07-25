@@ -1,108 +1,73 @@
-pub struct ExitStatus {
-    pub exit_code: i32, 
-    pub output: String
+use crate::token::{Token, TokenType};
+use crate::token::TokenType::{COMMA, DOT, EOF, LEFT_BRACE, LEFT_PAREN, MINUS, PLUS, RIGHT_BRACE, RIGHT_PAREN, SEMICOLON, STAR};
+
+pub(crate) struct Scanner<'a> {
+    start: usize,
+    current: usize,
+    line: usize,
+
+    source: &'a [u8],
+    tokens: Vec<Token<'a>>,
 }
 
-
-pub fn scan(file_content: String) -> ExitStatus {
-    let mut exit_code = 0;
-    let output = file_content.lines()
-        .enumerate()
-        .map(
-            |(lineno, line)| scan_line(line, lineno + 1, &mut exit_code)
-        ).collect();
-    let output = add_eof(output);
-    ExitStatus {exit_code, output}
-}
-
-fn scan_line(line: &str, lineno: usize, exit_code: &mut i32) -> String {
-    line.chars().map(|c| match c {
-        '(' => add_token(c, "LEFT_PAREN"),
-        ')' => add_token(c, "RIGHT_PAREN"),
-        '{' => add_token(c, "LEFT_BRACE"),
-        '}' => add_token(c, "RIGHT_BRACE"),
-        '*' => add_token(c, "STAR"),
-        '.' => add_token(c, "DOT"),
-        ',' => add_token(c, "COMMA"),
-        '+' => add_token(c, "PLUS"),
-        '-' => add_token(c, "MINUS"),
-        ';' => add_token(c, "SEMICOLON"),
-        _ => {
-            *exit_code = 65;
-            raise_err(c, lineno)
+impl<'a> Scanner<'a> {
+    pub(crate) fn new(source: &'a [u8]) -> Scanner {
+        Scanner {
+            source, tokens: vec![],
+            start: 0, current: 0, line: 1
         }
-    }).collect()
-}
-fn add_token(ch: char, token: &str) -> String {
-    format!("{token} {ch} null\n")
-}
+    }
 
-fn raise_err(ch: char, lineno: usize) -> String {
-    format!("[line {lineno}] Error: Unexpected character: {ch}\n")
-}
+    fn is_at_end(&self) -> bool {
+        self.current >= self.source.len()
+    }
 
-
-pub fn add_eof(s: String) -> String {
-    format!("{s}EOF  null")
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_scan() {
-        // Test for parentheses
-        let result = scan("(()".into());
-        assert_eq!(
-            result.output,
-            "LEFT_PAREN ( null\nLEFT_PAREN ( null\nRIGHT_PAREN ) null\nEOF  null"
-        );
-        assert_eq!(result.exit_code, 0);
-
-        // Test for braces
-        let result = scan("{{}".into());
-        assert_eq!(
-            result.output,
-            "LEFT_BRACE { null\nLEFT_BRACE { null\nRIGHT_BRACE } null\nEOF  null"
-        );
-        assert_eq!(result.exit_code, 0);
-
-        // Test for unexpected characters
-        let result = scan("abc".into());
-        assert!(result.output.contains("Error: Unexpected character"));
-        assert_eq!(result.exit_code, 65);
-
-        // Test for symbols * . , +
-        let result = scan("*.,+".into());
-        assert_eq!(
-            result.output,
-            "STAR * null\nDOT . null\nCOMMA , null\nPLUS + null\nEOF  null"
-        );
-        assert_eq!(result.exit_code, 0);
-
-        // Test for mixed characters
-        let result = scan("*(+}".into());
-        assert_eq!(
-            result.output,
-            "STAR * null\nLEFT_PAREN ( null\nPLUS + null\nRIGHT_BRACE } null\nEOF  null"
-        );
-        assert_eq!(result.exit_code, 0);
+    pub fn scan_tokens(&mut self) -> &'a Vec<Token> {
+        while !self.is_at_end() {
+            self.start = self.current;
+            self.scan_token()
+        }
         
-        // Test for unexpected characters with special symbols
-        let result = scan("$#*(+}".into());
-        assert!(result.output.contains("Error: Unexpected character: $"));
-        assert!(result.output.contains("Error: Unexpected character: #"));
-        assert_eq!(result.exit_code, 65);
+        self.tokens.push(
+            Token::new(EOF, "".as_bytes(), "null", self.line)
+        );
+        
+        &self.tokens
     }
 
-    #[test]
-    fn test_add_eof() {
-        assert_eq!(add_eof("content ".into()), "content EOF  null");
+    fn advance(&mut self) -> u8 {
+        let char = self.source[self.current];
+        self.current += 1;
+        char
     }
 
-    #[test]
-    fn test_add_eof_empty_string() {
-        assert_eq!(add_eof("".into()), "EOF  null");
+    fn add_token(&mut self, token_type: TokenType) {
+        self.add_token_with_literal(token_type, "null")
+    }
+
+    fn add_token_with_literal(&mut self, token_type: TokenType, literal: &'static str) {
+        let text = &self.source[self.start..self.current];
+        self.tokens.push(
+            Token::new(
+                token_type, text, literal, self.line
+            )
+        )
+    }
+
+    fn scan_token(&mut self) {
+        match self.advance() {
+            b'(' => self.add_token(LEFT_PAREN),
+            b')' => self.add_token(RIGHT_PAREN),
+            b'{' => self.add_token(LEFT_BRACE),
+            b'}' => self.add_token(RIGHT_BRACE),
+            b',' => self.add_token(COMMA),
+            b'.' => self.add_token(DOT),
+            b'-' => self.add_token(MINUS),
+            b'+' => self.add_token(PLUS),
+            b';' => self.add_token(SEMICOLON),
+            b'*' => self.add_token(STAR),
+            _ => unimplemented!()
+        }
     }
 }
+

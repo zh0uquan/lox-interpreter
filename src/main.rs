@@ -2,9 +2,9 @@ use std::env;
 use std::fs;
 use std::io::{self, Write};
 
-use crate::scanner::scan;
-
 mod scanner;
+mod token;
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() < 3 {
@@ -25,11 +25,14 @@ fn main() {
                 String::new()
             });
 
-            // Uncomment this block to pass the first stage
             if !file_contents.is_empty() {
-                let exit_status= scan(file_contents);
-                println!("{}", exit_status.output);
-                std::process::exit(exit_status.exit_code);
+                let mut scanner = scanner::Scanner::new(
+                    file_contents.as_bytes()   
+                );
+                
+                for token in scanner.scan_tokens() {
+                    println!("{}", token);
+                }
             } else {
                 println!("EOF  null"); // Placeholder, remove this line when implementing the scanner
             }
