@@ -1,5 +1,5 @@
 use crate::token::TokenType::{BANG, BANG_EQUAL, COMMA, DOT, EOF, EQUAL, EQUAL_EQUAL, GREATER, GREATER_EQUAL, IDENTIFIER, LEFT_BRACE, LEFT_PAREN, LESS, LESS_EQUAL, MINUS, NUMBER, PLUS, RIGHT_BRACE, RIGHT_PAREN, SEMICOLON, SLASH, STAR, STRING};
-use crate::token::{Token, TokenType};
+use crate::token::{Token, TokenType, try_get_keyword};
 
 pub(crate) struct Scanner<'a> {
     start: usize,
@@ -128,12 +128,16 @@ impl<'a> Scanner<'a> {
 
 
 
-    fn add_identifier(&mut self) {
+    fn add_identifier_or_reserved_words(&mut self) {
         while self.peek().is_ascii_alphanumeric() || self.peek() == b'_' {
             self.advance();
         }
-
-        self.add_token(IDENTIFIER);
+        
+        let str = &std::str::from_utf8(&self.source[self.start..self.current]).unwrap();
+        match try_get_keyword(str) {
+            None => self.add_token(IDENTIFIER),
+            Some(token) => self.add_token(token),
+        }
     }
 
     fn scan_token(&mut self) {
@@ -193,7 +197,7 @@ impl<'a> Scanner<'a> {
             b'\n' => self.line += 1,
             b'"' => self.add_string(),
             b'0'..=b'9' => self.add_number(),
-            b'a'..=b'z' | b'A'..=b'Z' | b'_' => self.add_identifier(),
+            b'a'..=b'z' | b'A'..=b'Z' | b'_' => self.add_identifier_or_reserved_words(),
             ch => self.error(self.line, "Unexpected character: ", (ch as char).into()),
         }
     }
