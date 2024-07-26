@@ -9,14 +9,13 @@ pub(crate) struct Scanner<'a> {
     source: &'a [u8],
     tokens: Vec<Token<'a>>,
     
-    has_error: bool
 }
 
 impl<'a> Scanner<'a> {
     pub(crate) fn new(source: &'a [u8]) -> Scanner {
         Scanner {
             source, tokens: vec![],
-            start: 0, current: 0, line: 1, has_error: false
+            start: 0, current: 0, line: 1
         }
     }
 
@@ -73,8 +72,7 @@ impl<'a> Scanner<'a> {
     }
     
     fn error(&mut self, line: usize, _where: &'static str, message: String) {
-        self.has_error = true;
-        println!("[line {}] Error: {}: {}", line, _where, message);
+        eprintln!("[line {}] Error: {}: {}", line, _where, message);
     }
 }
 

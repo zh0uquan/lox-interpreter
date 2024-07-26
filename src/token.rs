@@ -82,7 +82,6 @@ impl<'a> Display for Token<'a> {
 mod tests {
     use super::*;
     
-    
     #[test]
     fn test_token() {
         let t = Token::new(TokenType::LEFT_PAREN, &[40], "null", 0);

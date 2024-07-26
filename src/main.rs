@@ -1,6 +1,6 @@
 use std::env;
 use std::fs;
-use std::io::{self, Write};
+use std::io::{self, stderr, Write};
 
 mod scanner;
 mod token;
@@ -17,29 +17,23 @@ fn main() {
 
     match command.as_str() {
         "tokenize" => {
-            // You can use print statements as follows for debugging, they'll be visible when running tests.
-            writeln!(io::stderr(), "Logs from your program will appear here!").unwrap();
+            // Read file contents
+            let file_contents = match fs::read_to_string(filename) {
+                Ok(contents) => contents,
+                Err(e) => {
+                    eprintln!("Failed to read file {}: {}", filename, e);
+                    return;
+                }
+            };
 
-            let file_contents = fs::read_to_string(filename).unwrap_or_else(|_| {
-                writeln!(io::stderr(), "Failed to read file {}", filename).unwrap();
-                String::new()
-            });
-
+            // Create scanner and process tokens
             if !file_contents.is_empty() {
-                let mut scanner = scanner::Scanner::new(
-                    file_contents.as_bytes()   
-                );
-                
+                let mut scanner = scanner::Scanner::new(file_contents.as_bytes());
                 for token in scanner.scan_tokens() {
                     println!("{}", token);
                 }
-            } else {
-                println!("EOF  null"); // Placeholder, remove this line when implementing the scanner
             }
         }
-        _ => {
-            writeln!(io::stderr(), "Unknown command: {}", command).unwrap();
-            return;
-        }
+        _ => eprintln!("Unknown command: {}", command),
     }
 }
