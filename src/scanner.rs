@@ -8,13 +8,15 @@ pub(crate) struct Scanner<'a> {
 
     source: &'a [u8],
     tokens: Vec<Token<'a>>,
+    
+    has_error: bool
 }
 
 impl<'a> Scanner<'a> {
     pub(crate) fn new(source: &'a [u8]) -> Scanner {
         Scanner {
             source, tokens: vec![],
-            start: 0, current: 0, line: 1
+            start: 0, current: 0, line: 1, has_error: false
         }
     }
 
@@ -66,8 +68,13 @@ impl<'a> Scanner<'a> {
             b'+' => self.add_token(PLUS),
             b';' => self.add_token(SEMICOLON),
             b'*' => self.add_token(STAR),
-            _ => unimplemented!()
+            ch => self.error(self.line, "Unexpected character", ch.to_string())
         }
+    }
+    
+    fn error(&mut self, line: usize, _where: &'static str, message: String) {
+        self.has_error = true;
+        println!("[line {}] Error: {}: {}", line, _where, message);
     }
 }
 
