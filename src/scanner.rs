@@ -128,7 +128,7 @@ impl<'a> Scanner<'a> {
                 };
                
             }
-            b' ' => {},
+            b' ' | b'\t' => {},
             ch => self.error(self.line, "Unexpected character", (ch as char).into()),
         }
     }
