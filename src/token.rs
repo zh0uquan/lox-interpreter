@@ -28,7 +28,7 @@ pub enum TokenType {
 
     // Literals
     IDENTIFIER,
-    STRING_LITERAL,  // Renamed to avoid conflict with reserved keyword
+    STRING_LITERAL, // Renamed to avoid conflict with reserved keyword
     NUMBER,
 
     // Keywords
@@ -61,7 +61,12 @@ pub struct Token<'a> {
 }
 
 impl<'a> Token<'a> {
-    pub fn new(token_type: TokenType, lexeme: &'a [u8], literal: &'static str, line: usize) -> Self {
+    pub fn new(
+        token_type: TokenType,
+        lexeme: &'a [u8],
+        literal: &'static str,
+        line: usize,
+    ) -> Self {
         Token {
             token_type,
             lexeme,
@@ -81,11 +86,11 @@ impl<'a> Display for Token<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_token() {
         let t = Token::new(TokenType::LEFT_PAREN, &[40], "null", 0);
-        
+
         println!("{}", t);
     }
 }

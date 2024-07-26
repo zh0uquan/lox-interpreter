@@ -1,6 +1,5 @@
 use std::env;
 use std::fs;
-use std::io::{self, stderr, Write};
 
 mod scanner;
 mod token;
@@ -8,7 +7,7 @@ mod token;
 fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() < 3 {
-        writeln!(io::stderr(), "Usage: {} tokenize <filename>", args[0]).unwrap();
+        eprintln!("Usage: {} tokenize <filename>", args[0]);
         return;
     }
 
