@@ -21,7 +21,7 @@ fn main() {
                 Ok(contents) => contents,
                 Err(e) => {
                     eprintln!("Failed to read file {}: {}", filename, e);
-                    return;
+                    String::new()
                 }
             };
 
