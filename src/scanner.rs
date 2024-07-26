@@ -1,5 +1,6 @@
 use crate::token::TokenType::{
-    COMMA, DOT, EOF, LEFT_BRACE, LEFT_PAREN, MINUS, PLUS, RIGHT_BRACE, RIGHT_PAREN, SEMICOLON, STAR,
+    BANG, BANG_EQUAL, COMMA, DOT, EOF, EQUAL, EQUAL_EQUAL, GREATER, GREATER_EQUAL, LEFT_BRACE,
+    LEFT_PAREN, LESS, LESS_EQUAL, MINUS, PLUS, RIGHT_BRACE, RIGHT_PAREN, SEMICOLON, STAR,
 };
 use crate::token::{Token, TokenType};
 
@@ -21,7 +22,7 @@ impl<'a> Scanner<'a> {
             start: 0,
             current: 0,
             line: 1,
-            has_error: false
+            has_error: false,
         }
     }
 
@@ -29,7 +30,7 @@ impl<'a> Scanner<'a> {
         self.current >= self.source.len()
     }
 
-    pub fn scan_tokens(&mut self) -> (&'a Vec<Token>, bool){
+    pub fn scan_tokens(&mut self) -> (&'a Vec<Token>, bool) {
         while !self.is_at_end() {
             self.start = self.current;
             self.scan_token()
@@ -57,6 +58,18 @@ impl<'a> Scanner<'a> {
             .push(Token::new(token_type, text, literal, self.line))
     }
 
+    fn next_match(&mut self, expected: u8) -> bool {
+        if self.is_at_end() {
+            return false;
+        }
+        if self.source[self.current] != expected {
+            return false;
+        }
+
+        self.current += 1;
+        true
+    }
+
     fn scan_token(&mut self) {
         match self.advance() {
             b'(' => self.add_token(LEFT_PAREN),
@@ -69,6 +82,39 @@ impl<'a> Scanner<'a> {
             b'+' => self.add_token(PLUS),
             b';' => self.add_token(SEMICOLON),
             b'*' => self.add_token(STAR),
+            b'!' => {
+                let token_type = if self.next_match(b'=') {
+                    BANG_EQUAL
+                } else {
+                    BANG
+                };
+                self.add_token(token_type);
+            }
+            b'=' => {
+                let token_type = if self.next_match(b'=') {
+                    EQUAL_EQUAL
+                } else {
+                    EQUAL
+                };
+                self.add_token(token_type);
+            }
+            b'<' => {
+                let token_type = if self.next_match(b'=') {
+                    LESS_EQUAL
+                } else {
+                    LESS
+                };
+                self.add_token(token_type);
+            }
+            b'>' => {
+                let token_type = if self.next_match(b'=') {
+                    GREATER_EQUAL
+                } else {
+                    GREATER
+                };
+                self.add_token(token_type);
+            }
+
             ch => self.error(self.line, "Unexpected character", (ch as char).into()),
         }
     }
