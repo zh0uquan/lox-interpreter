@@ -1,8 +1,4 @@
-use crate::token::TokenType::{
-    BANG, BANG_EQUAL, COMMA, DOT, EOF, EQUAL, EQUAL_EQUAL, GREATER, GREATER_EQUAL, LEFT_BRACE,
-    LEFT_PAREN, LESS, LESS_EQUAL, MINUS, NUMBER, PLUS, RIGHT_BRACE, RIGHT_PAREN, SEMICOLON, SLASH,
-    STAR, STRING,
-};
+use crate::token::TokenType::{BANG, BANG_EQUAL, COMMA, DOT, EOF, EQUAL, EQUAL_EQUAL, GREATER, GREATER_EQUAL, IDENTIFIER, LEFT_BRACE, LEFT_PAREN, LESS, LESS_EQUAL, MINUS, NUMBER, PLUS, RIGHT_BRACE, RIGHT_PAREN, SEMICOLON, SLASH, STAR, STRING};
 use crate::token::{Token, TokenType};
 
 pub(crate) struct Scanner<'a> {
@@ -130,6 +126,16 @@ impl<'a> Scanner<'a> {
         self.add_token_with_literal(NUMBER, double)
     }
 
+
+
+    fn add_identifier(&mut self) {
+        while self.peek().is_ascii_alphanumeric() || self.peek() == b'_' {
+            self.advance();
+        }
+
+        self.add_token(IDENTIFIER);
+    }
+
     fn scan_token(&mut self) {
         match self.advance() {
             b'(' => self.add_token(LEFT_PAREN),
@@ -187,6 +193,7 @@ impl<'a> Scanner<'a> {
             b'\n' => self.line += 1,
             b'"' => self.add_string(),
             b'0'..=b'9' => self.add_number(),
+            b'a'..=b'z' | b'A'..=b'Z' | b'_' => self.add_identifier(),
             ch => self.error(self.line, "Unexpected character: ", (ch as char).into()),
         }
     }
@@ -195,4 +202,5 @@ impl<'a> Scanner<'a> {
         self.has_error = true;
         eprintln!("[line {}] Error: {}{}", line, _where, message);
     }
+
 }
