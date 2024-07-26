@@ -1,6 +1,6 @@
 use std::fmt::{Display, Formatter};
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 #[allow(non_camel_case_types, dead_code)]
 pub enum TokenType {
     // Single-character tokens
@@ -77,16 +77,16 @@ const fn create_keywords() -> [(&'static str, TokenType); 16] {
 const KEYWORDS: [(&str, TokenType); 16] = create_keywords();
 
 pub fn try_get_keyword(keyword: &str) -> Option<TokenType> {
-    KEYWORDS.into_iter()
+    KEYWORDS
+        .into_iter()
         .find(|&(key, _)| key == keyword)
         .map(|(_, token_type)| token_type)
 }
 
-
 pub struct Token<'a> {
-    token_type: TokenType,
+    pub(crate) token_type: TokenType,
     lexeme: &'a [u8],
-    literal: String,
+    pub(crate) literal: String,
     line: usize,
 }
 

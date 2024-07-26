@@ -1,5 +1,9 @@
-use crate::token::TokenType::{BANG, BANG_EQUAL, COMMA, DOT, EOF, EQUAL, EQUAL_EQUAL, GREATER, GREATER_EQUAL, IDENTIFIER, LEFT_BRACE, LEFT_PAREN, LESS, LESS_EQUAL, MINUS, NUMBER, PLUS, RIGHT_BRACE, RIGHT_PAREN, SEMICOLON, SLASH, STAR, STRING};
-use crate::token::{Token, TokenType, try_get_keyword};
+use crate::token::TokenType::{
+    BANG, BANG_EQUAL, COMMA, DOT, EOF, EQUAL, EQUAL_EQUAL, GREATER, GREATER_EQUAL, IDENTIFIER,
+    LEFT_BRACE, LEFT_PAREN, LESS, LESS_EQUAL, MINUS, NUMBER, PLUS, RIGHT_BRACE, RIGHT_PAREN,
+    SEMICOLON, SLASH, STAR, STRING,
+};
+use crate::token::{try_get_keyword, Token, TokenType};
 
 pub(crate) struct Scanner<'a> {
     start: usize,
@@ -126,13 +130,11 @@ impl<'a> Scanner<'a> {
         self.add_token_with_literal(NUMBER, double)
     }
 
-
-
     fn add_identifier_or_reserved_words(&mut self) {
         while self.peek().is_ascii_alphanumeric() || self.peek() == b'_' {
             self.advance();
         }
-        
+
         let str = &std::str::from_utf8(&self.source[self.start..self.current]).unwrap();
         match try_get_keyword(str) {
             None => self.add_token(IDENTIFIER),
@@ -206,5 +208,82 @@ impl<'a> Scanner<'a> {
         self.has_error = true;
         eprintln!("[line {}] Error: {}{}", line, _where, message);
     }
+}
 
+#[cfg(test)]
+mod tests {
+    use crate::token::TokenType::{
+        EOF, EQUAL, IDENTIFIER, IF, LEFT_PAREN, NUMBER, SEMICOLON, STRING, VAR, WHILE,
+    };
+
+    use super::*;
+
+    #[test]
+    fn test_single_token() {
+        let source = "(".as_bytes();
+        let mut scanner = Scanner::new(source);
+        let (tokens, has_error) = scanner.scan_tokens();
+        assert!(!has_error);
+        assert_eq!(tokens.len(), 2);
+        assert_eq!(tokens[0].token_type, LEFT_PAREN);
+        assert_eq!(tokens[1].token_type, EOF);
+    }
+
+    #[test]
+    fn test_multiple_tokens() {
+        let source = "var x = 42;".as_bytes();
+        let mut scanner = Scanner::new(source);
+        let (tokens, has_error) = scanner.scan_tokens();
+        assert!(!has_error);
+        assert_eq!(tokens[0].token_type, VAR);
+        assert_eq!(tokens[1].token_type, IDENTIFIER);
+        assert_eq!(tokens[2].token_type, EQUAL);
+        assert_eq!(tokens[3].token_type, NUMBER);
+        assert_eq!(tokens[4].token_type, SEMICOLON);
+        assert_eq!(tokens[5].token_type, EOF);
+    }
+
+    #[test]
+    fn test_string_literal() {
+        let source = r#""hello world""#.as_bytes();
+        let mut scanner = Scanner::new(source);
+        let (tokens, has_error) = scanner.scan_tokens();
+        assert!(!has_error);
+        assert_eq!(tokens.len(), 2);
+        assert_eq!(tokens[0].token_type, STRING);
+        assert_eq!(tokens[1].token_type, EOF);
+        assert_eq!(tokens[0].literal, String::from("hello world"));
+    }
+
+    #[test]
+    fn test_unterminated_string() {
+        let source = r#""hello world"#.as_bytes();
+        let mut scanner = Scanner::new(source);
+        let (tokens, has_error) = scanner.scan_tokens();
+        assert!(has_error);
+        assert_eq!(tokens.len(), 1);
+        assert_eq!(tokens[0].token_type, EOF);
+    }
+
+    #[test]
+    fn test_keyword_identification() {
+        let source = "if while".as_bytes();
+        let mut scanner = Scanner::new(source);
+        let (tokens, has_error) = scanner.scan_tokens();
+        assert!(!has_error);
+        assert_eq!(tokens.len(), 3);
+        assert_eq!(tokens[0].token_type, IF);
+        assert_eq!(tokens[1].token_type, WHILE);
+        assert_eq!(tokens[2].token_type, EOF);
+    }
+
+    #[test]
+    fn test_error_handling() {
+        let source = "@".as_bytes();
+        let mut scanner = Scanner::new(source);
+        let (tokens, has_error) = scanner.scan_tokens();
+        assert!(has_error);
+        assert_eq!(tokens.len(), 1);
+        assert_eq!(tokens[0].token_type, EOF);
+    }
 }
