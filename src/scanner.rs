@@ -155,12 +155,12 @@ impl<'a> Scanner<'a> {
             b' ' | b'\t' | b'\r' => {}
             b'\n' => self.line += 1,
             b'"' => self.add_string(),
-            ch => self.error(self.line, "Unexpected character:", (ch as char).into()),
+            ch => self.error(self.line, "Unexpected character: ", (ch as char).into()),
         }
     }
 
     fn error(&mut self, line: usize, _where: &'static str, message: String) {
         self.has_error = true;
-        eprintln!("[line {}] Error: {} {}", line, _where, message);
+        eprintln!("[line {}] Error: {}{}", line, _where, message);
     }
 }
