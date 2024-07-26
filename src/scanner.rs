@@ -1,7 +1,4 @@
-use crate::token::TokenType::{
-    BANG, BANG_EQUAL, COMMA, DOT, EOF, EQUAL, EQUAL_EQUAL, GREATER, GREATER_EQUAL, LEFT_BRACE,
-    LEFT_PAREN, LESS, LESS_EQUAL, MINUS, PLUS, RIGHT_BRACE, RIGHT_PAREN, SEMICOLON, STAR,
-};
+use crate::token::TokenType::{BANG, BANG_EQUAL, COMMA, DOT, EOF, EQUAL, EQUAL_EQUAL, GREATER, GREATER_EQUAL, LEFT_BRACE, LEFT_PAREN, LESS, LESS_EQUAL, MINUS, PLUS, RIGHT_BRACE, RIGHT_PAREN, SEMICOLON, SLASH, STAR};
 use crate::token::{Token, TokenType};
 
 pub(crate) struct Scanner<'a> {
@@ -69,6 +66,13 @@ impl<'a> Scanner<'a> {
         self.current += 1;
         true
     }
+    
+    fn peek(&self) -> u8 {
+        if self.is_at_end() {
+            return b'\0'
+        }
+        self.source[self.current]
+    }
 
     fn scan_token(&mut self) {
         match self.advance() {
@@ -113,6 +117,16 @@ impl<'a> Scanner<'a> {
                     GREATER
                 };
                 self.add_token(token_type);
+            }
+            b'/' => {
+                if self.next_match(b'/') {
+                    while !self.is_at_end() && self.peek() != b'\n' {
+                        self.advance();
+                    }
+                } else {
+                    self.add_token(SLASH)
+                };
+               
             }
 
             ch => self.error(self.line, "Unexpected character", (ch as char).into()),
