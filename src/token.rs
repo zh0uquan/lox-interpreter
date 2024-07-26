@@ -28,7 +28,7 @@ pub enum TokenType {
 
     // Literals
     IDENTIFIER,
-    STRING_LITERAL, // Renamed to avoid conflict with reserved keyword
+    STRING_LITERAL,
     NUMBER,
 
     // Keywords
@@ -56,17 +56,12 @@ pub enum TokenType {
 pub struct Token<'a> {
     token_type: TokenType,
     lexeme: &'a [u8],
-    literal: &'static str,
+    literal: &'a str,
     line: usize,
 }
 
 impl<'a> Token<'a> {
-    pub fn new(
-        token_type: TokenType,
-        lexeme: &'a [u8],
-        literal: &'static str,
-        line: usize,
-    ) -> Self {
+    pub fn new(token_type: TokenType, lexeme: &'a [u8], literal: &'a str, line: usize) -> Self {
         Token {
             token_type,
             lexeme,

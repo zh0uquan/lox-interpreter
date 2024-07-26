@@ -1,4 +1,8 @@
-use crate::token::TokenType::{BANG, BANG_EQUAL, COMMA, DOT, EOF, EQUAL, EQUAL_EQUAL, GREATER, GREATER_EQUAL, LEFT_BRACE, LEFT_PAREN, LESS, LESS_EQUAL, MINUS, PLUS, RIGHT_BRACE, RIGHT_PAREN, SEMICOLON, SLASH, STAR};
+use crate::token::TokenType::{
+    BANG, BANG_EQUAL, COMMA, DOT, EOF, EQUAL, EQUAL_EQUAL, GREATER, GREATER_EQUAL, LEFT_BRACE,
+    LEFT_PAREN, LESS, LESS_EQUAL, MINUS, PLUS, RIGHT_BRACE, RIGHT_PAREN, SEMICOLON, SLASH, STAR,
+    STRING_LITERAL,
+};
 use crate::token::{Token, TokenType};
 
 pub(crate) struct Scanner<'a> {
@@ -49,7 +53,7 @@ impl<'a> Scanner<'a> {
         self.add_token_with_literal(token_type, "null")
     }
 
-    fn add_token_with_literal(&mut self, token_type: TokenType, literal: &'static str) {
+    fn add_token_with_literal(&mut self, token_type: TokenType, literal: &'a str) {
         let text = &self.source[self.start..self.current];
         self.tokens
             .push(Token::new(token_type, text, literal, self.line))
@@ -66,12 +70,33 @@ impl<'a> Scanner<'a> {
         self.current += 1;
         true
     }
-    
+
     fn peek(&self) -> u8 {
         if self.is_at_end() {
-            return b'\0'
+            return b'\0';
         }
         self.source[self.current]
+    }
+
+    fn add_string(&mut self) {
+        while self.peek() != b'"' && !self.is_at_end() {
+            if self.peek() == b'\n' {
+                self.line += 1;
+            }
+            self.advance();
+        }
+
+        if self.is_at_end() {
+            self.error(self.line, "Unterminated string.", "".into());
+            return;
+        }
+
+        self.advance();
+
+        self.add_token_with_literal(
+            STRING_LITERAL,
+            std::str::from_utf8(&self.source[self.start + 1..self.current - 1]).unwrap(),
+        );
     }
 
     fn scan_token(&mut self) {
@@ -126,16 +151,16 @@ impl<'a> Scanner<'a> {
                 } else {
                     self.add_token(SLASH)
                 };
-               
             }
-            b' ' | b'\t' | b'\r' => {},
+            b' ' | b'\t' | b'\r' => {}
             b'\n' => self.line += 1,
-            ch => self.error(self.line, "Unexpected character", (ch as char).into()),
+            b'"' => self.add_string(),
+            ch => self.error(self.line, "Unexpected character:", (ch as char).into()),
         }
     }
 
     fn error(&mut self, line: usize, _where: &'static str, message: String) {
         self.has_error = true;
-        eprintln!("[line {}] Error: {}: {}", line, _where, message);
+        eprintln!("[line {}] Error: {} {}", line, _where, message);
     }
 }
