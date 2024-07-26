@@ -74,6 +74,13 @@ impl<'a> Scanner<'a> {
         self.source[self.current]
     }
 
+    fn peek_next(&self) -> u8 {
+        if self.current + 1 >= self.source.len() {
+            return b'\0'
+        }
+        self.source[self.current + 1]
+    }
+
     fn add_string(&mut self) {
         while self.peek() != b'"' && !self.is_at_end() {
             if self.peek() == b'\n' {
@@ -96,21 +103,16 @@ impl<'a> Scanner<'a> {
     }
 
     fn add_number(&mut self) {
-        let mut dot_count: u8 = 0;
-        while (self.peek().is_ascii_digit() || self.peek() == b'.')
-            && self.peek() != b'\n'
-            && !self.is_at_end()
-            && dot_count <= 1
-        {
-            if self.peek() == b'.' {
-                dot_count += 1;
-            }
-            if dot_count == 2 {
-                self.add_token_with_literal(NUMBER, std::str::from_utf8(&self.source[self.start..self.current]).unwrap());
-                self.advance();
-                return;
-            }
+        while self.peek().is_ascii_digit() {
             self.advance();
+        }
+
+        if self.peek() == b'.' && self.peek_next().is_ascii_digit() {
+            self.advance();
+
+            while self.peek().is_ascii_digit() {
+                self.advance();
+            }
         }
 
         self.add_token_with_literal(NUMBER, std::str::from_utf8(&self.source[self.start..self.current]).unwrap())
