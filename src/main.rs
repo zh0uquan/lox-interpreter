@@ -28,8 +28,13 @@ fn main() {
             // Create scanner and process tokens
             if !file_contents.is_empty() {
                 let mut scanner = scanner::Scanner::new(file_contents.as_bytes());
-                for token in scanner.scan_tokens() {
+                let (tokens, has_err) = scanner.scan_tokens();
+                
+                for token in tokens {
                     println!("{}", token);
+                }
+                if has_err {
+                    std::process::exit(65);
                 }
             }
         }

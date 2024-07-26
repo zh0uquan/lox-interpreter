@@ -10,6 +10,7 @@ pub(crate) struct Scanner<'a> {
 
     source: &'a [u8],
     tokens: Vec<Token<'a>>,
+    has_error: bool,
 }
 
 impl<'a> Scanner<'a> {
@@ -20,6 +21,7 @@ impl<'a> Scanner<'a> {
             start: 0,
             current: 0,
             line: 1,
+            has_error: false
         }
     }
 
@@ -27,7 +29,7 @@ impl<'a> Scanner<'a> {
         self.current >= self.source.len()
     }
 
-    pub fn scan_tokens(&mut self) -> &'a Vec<Token> {
+    pub fn scan_tokens(&mut self) -> (&'a Vec<Token>, bool){
         while !self.is_at_end() {
             self.start = self.current;
             self.scan_token()
@@ -36,7 +38,7 @@ impl<'a> Scanner<'a> {
         self.tokens
             .push(Token::new(EOF, "".as_bytes(), "null", self.line));
 
-        &self.tokens
+        (&self.tokens, self.has_error)
     }
 
     fn advance(&mut self) -> u8 {
@@ -72,6 +74,7 @@ impl<'a> Scanner<'a> {
     }
 
     fn error(&mut self, line: usize, _where: &'static str, message: String) {
+        self.has_error = true;
         eprintln!("[line {}] Error: {}: {}", line, _where, message);
     }
 }
