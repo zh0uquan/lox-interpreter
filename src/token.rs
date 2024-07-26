@@ -56,12 +56,12 @@ pub enum TokenType {
 pub struct Token<'a> {
     token_type: TokenType,
     lexeme: &'a [u8],
-    literal: &'a str,
+    literal: String,
     line: usize,
 }
 
 impl<'a> Token<'a> {
-    pub fn new(token_type: TokenType, lexeme: &'a [u8], literal: &'a str, line: usize) -> Self {
+    pub fn new(token_type: TokenType, lexeme: &'a [u8], literal: String, line: usize) -> Self {
         Token {
             token_type,
             lexeme,
@@ -84,7 +84,7 @@ mod tests {
 
     #[test]
     fn test_token() {
-        let t = Token::new(TokenType::LEFT_PAREN, &[40], "null", 0);
+        let t = Token::new(TokenType::LEFT_PAREN, &[40], "null".into(), 0);
 
         println!("{}", t);
     }

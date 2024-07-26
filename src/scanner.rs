@@ -1,4 +1,8 @@
-use crate::token::TokenType::{BANG, BANG_EQUAL, COMMA, DOT, EOF, EQUAL, EQUAL_EQUAL, GREATER, GREATER_EQUAL, LEFT_BRACE, LEFT_PAREN, LESS, LESS_EQUAL, MINUS, NUMBER, PLUS, RIGHT_BRACE, RIGHT_PAREN, SEMICOLON, SLASH, STAR, STRING};
+use crate::token::TokenType::{
+    BANG, BANG_EQUAL, COMMA, DOT, EOF, EQUAL, EQUAL_EQUAL, GREATER, GREATER_EQUAL, LEFT_BRACE,
+    LEFT_PAREN, LESS, LESS_EQUAL, MINUS, NUMBER, PLUS, RIGHT_BRACE, RIGHT_PAREN, SEMICOLON, SLASH,
+    STAR, STRING,
+};
 use crate::token::{Token, TokenType};
 
 pub(crate) struct Scanner<'a> {
@@ -34,7 +38,7 @@ impl<'a> Scanner<'a> {
         }
 
         self.tokens
-            .push(Token::new(EOF, "".as_bytes(), "null", self.line));
+            .push(Token::new(EOF, "".as_bytes(), "null".into(), self.line));
 
         (&self.tokens, self.has_error)
     }
@@ -46,10 +50,10 @@ impl<'a> Scanner<'a> {
     }
 
     fn add_token(&mut self, token_type: TokenType) {
-        self.add_token_with_literal(token_type, "null")
+        self.add_token_with_literal(token_type, "null".into())
     }
 
-    fn add_token_with_literal(&mut self, token_type: TokenType, literal: &'a str) {
+    fn add_token_with_literal(&mut self, token_type: TokenType, literal: String) {
         let text = &self.source[self.start..self.current];
         self.tokens
             .push(Token::new(token_type, text, literal, self.line))
@@ -76,7 +80,7 @@ impl<'a> Scanner<'a> {
 
     fn peek_next(&self) -> u8 {
         if self.current + 1 >= self.source.len() {
-            return b'\0'
+            return b'\0';
         }
         self.source[self.current + 1]
     }
@@ -98,8 +102,10 @@ impl<'a> Scanner<'a> {
 
         self.add_token_with_literal(
             STRING,
-            std::str::from_utf8(&self.source[self.start + 1..self.current - 1]).unwrap(),
-        );
+            std::str::from_utf8(&self.source[self.start + 1..self.current - 1])
+                .unwrap()
+                .into(),
+        )
     }
 
     fn add_number(&mut self) {
@@ -114,8 +120,14 @@ impl<'a> Scanner<'a> {
                 self.advance();
             }
         }
-
-        self.add_token_with_literal(NUMBER, std::str::from_utf8(&self.source[self.start..self.current]).unwrap())
+        let str_repr = std::str::from_utf8(&self.source[self.start..self.current]).unwrap();
+        let double = str_repr.parse::<f64>().unwrap();
+        let double = if double.fract() == 0.0 {
+            format!("{:.1}", double)
+        } else {
+            format!("{}", double)
+        };
+        self.add_token_with_literal(NUMBER, double)
     }
 
     fn scan_token(&mut self) {
