@@ -108,7 +108,10 @@ impl<'a> Scanner<'a> {
             self.advance();
         }
         // check two dot
-        // check 
+        if self.peek() == b'.' {
+            self.add_token_with_literal(NUMBER, std::str::from_utf8(&self.source[self.start..self.current - 1]).unwrap())
+
+        }
         
         
         self.add_token_with_literal(NUMBER, std::str::from_utf8(&self.source[self.start..self.current]).unwrap())
