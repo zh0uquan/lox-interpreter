@@ -26,7 +26,9 @@ fn main() {
             };
 
             // Create scanner and process tokens
-            if !file_contents.is_empty() {
+            if file_contents.is_empty() {
+                eprintln!("EOF  null")
+            } else {
                 let mut scanner = scanner::Scanner::new(file_contents.as_bytes());
                 let (tokens, has_err) = scanner.scan_tokens();
                 
