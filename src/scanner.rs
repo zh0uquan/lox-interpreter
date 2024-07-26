@@ -1,8 +1,4 @@
-use crate::token::TokenType::{
-    BANG, BANG_EQUAL, COMMA, DOT, EOF, EQUAL, EQUAL_EQUAL, GREATER, GREATER_EQUAL, LEFT_BRACE,
-    LEFT_PAREN, LESS, LESS_EQUAL, MINUS, PLUS, RIGHT_BRACE, RIGHT_PAREN, SEMICOLON, SLASH, STAR,
-    STRING,
-};
+use crate::token::TokenType::{BANG, BANG_EQUAL, COMMA, DOT, EOF, EQUAL, EQUAL_EQUAL, GREATER, GREATER_EQUAL, LEFT_BRACE, LEFT_PAREN, LESS, LESS_EQUAL, MINUS, NUMBER, PLUS, RIGHT_BRACE, RIGHT_PAREN, SEMICOLON, SLASH, STAR, STRING};
 use crate::token::{Token, TokenType};
 
 pub(crate) struct Scanner<'a> {
@@ -99,6 +95,25 @@ impl<'a> Scanner<'a> {
         );
     }
 
+    fn add_number(&mut self) {
+        let mut dot_count: u8 = 0;
+        while (self.peek().is_ascii_digit() || self.peek() == b'.')
+            && self.peek() != b'\n'
+            && !self.is_at_end()
+            && dot_count <= 1
+        {
+            if self.peek() == b'.' {
+                dot_count += 1;
+            }
+            self.advance();
+        }
+        // check two dot
+        // check 
+        
+        
+        self.add_token_with_literal(NUMBER, std::str::from_utf8(&self.source[self.start..self.current]).unwrap())
+    }
+
     fn scan_token(&mut self) {
         match self.advance() {
             b'(' => self.add_token(LEFT_PAREN),
@@ -155,6 +170,7 @@ impl<'a> Scanner<'a> {
             b' ' | b'\t' | b'\r' => {}
             b'\n' => self.line += 1,
             b'"' => self.add_string(),
+            b'0'..=b'9' => self.add_number(),
             ch => self.error(self.line, "Unexpected character: ", (ch as char).into()),
         }
     }
