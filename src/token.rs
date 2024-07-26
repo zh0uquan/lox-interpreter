@@ -28,7 +28,7 @@ pub enum TokenType {
 
     // Literals
     IDENTIFIER,
-    STRING_LITERAL,
+    STRING,
     NUMBER,
 
     // Keywords

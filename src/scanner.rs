@@ -1,7 +1,7 @@
 use crate::token::TokenType::{
     BANG, BANG_EQUAL, COMMA, DOT, EOF, EQUAL, EQUAL_EQUAL, GREATER, GREATER_EQUAL, LEFT_BRACE,
     LEFT_PAREN, LESS, LESS_EQUAL, MINUS, PLUS, RIGHT_BRACE, RIGHT_PAREN, SEMICOLON, SLASH, STAR,
-    STRING_LITERAL,
+    STRING,
 };
 use crate::token::{Token, TokenType};
 
@@ -94,7 +94,7 @@ impl<'a> Scanner<'a> {
         self.advance();
 
         self.add_token_with_literal(
-            STRING_LITERAL,
+            STRING,
             std::str::from_utf8(&self.source[self.start + 1..self.current - 1]).unwrap(),
         );
     }
