@@ -105,15 +105,14 @@ impl<'a> Scanner<'a> {
             if self.peek() == b'.' {
                 dot_count += 1;
             }
+            if dot_count == 2 {
+                self.add_token_with_literal(NUMBER, std::str::from_utf8(&self.source[self.start..self.current]).unwrap());
+                self.advance();
+                return;
+            }
             self.advance();
         }
-        // check two dot
-        if self.peek() == b'.' {
-            self.add_token_with_literal(NUMBER, std::str::from_utf8(&self.source[self.start..self.current - 1]).unwrap())
 
-        }
-        
-        
         self.add_token_with_literal(NUMBER, std::str::from_utf8(&self.source[self.start..self.current]).unwrap())
     }
 
