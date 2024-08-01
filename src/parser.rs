@@ -177,6 +177,6 @@ impl<'a, 'b> Parser<'a, 'b> {
             };
         }
         
-        panic!("not implement!")
+        std::process::exit(65);
     }
 }
