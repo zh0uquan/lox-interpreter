@@ -149,10 +149,9 @@ impl<'a, 'b> Parser<'a, 'b> {
             expr = Binary {
                 left: Box::new(expr),
                 operator: self.previous(),
-                right: Box::new(self.term())
+                right: Box::new(self.factor())
             }
         }
-        
         expr
     }
 
