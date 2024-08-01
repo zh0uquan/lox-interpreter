@@ -4,7 +4,7 @@ use std::fmt::{Display, Formatter};
 use crate::Lox;
 use crate::parser::Expr::{Binary, Grouping, Literal, Unary};
 use crate::token::{Token, TokenType};
-use crate::token::TokenType::{BANG, EOF, FALSE, LEFT_PAREN, MINUS, NIL, NUMBER, PLUS, RIGHT_PAREN, SLASH, STAR, STRING, TRUE};
+use crate::token::TokenType::{BANG, BANG_EQUAL, EOF, EQUAL_EQUAL, FALSE, GREATER, GREATER_EQUAL, LEFT_PAREN, LESS, LESS_EQUAL, MINUS, NIL, NUMBER, PLUS, RIGHT_PAREN, SLASH, STAR, STRING, TRUE};
 
 #[allow(dead_code)]
 pub enum Expr<'a> {
@@ -140,9 +140,34 @@ impl<'a, 'b> Parser<'a, 'b> {
     }
 
     fn expression(&self) -> Expr {
-        self.term()
+        self.equality()
     }
 
+    fn equality(&self) -> Expr {
+        let mut expr = self.comparison();
+        while self.match_token(&[BANG_EQUAL, EQUAL_EQUAL]) {
+            expr = Binary {
+                left: Box::new(expr),
+                operator: self.previous(),
+                right: Box::new(self.comparison())
+            }
+        }
+        expr
+    }
+    
+    fn comparison(&self) -> Expr {
+        let mut expr = self.term();
+        while self.match_token(&[GREATER, GREATER_EQUAL, LESS, LESS_EQUAL]) {
+            expr = Binary {
+                left: Box::new(expr),
+                operator: self.previous(),
+                right: Box::new(self.term())
+            }
+        }
+        expr
+        
+    }
+    
     fn term(&self) -> Expr {
         let mut expr = self.factor();
         while self.match_token(&[MINUS, PLUS]) {
