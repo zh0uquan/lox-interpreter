@@ -4,13 +4,13 @@ use std::fmt::{Display, Formatter};
 use crate::Lox;
 use crate::parser::Expr::{Binary, Grouping, Literal, Unary};
 use crate::token::{Token, TokenType};
-use crate::token::TokenType::{BANG, EOF, FALSE, LEFT_PAREN, MINUS, NIL, NUMBER, RIGHT_PAREN, STRING, TRUE};
+use crate::token::TokenType::{BANG, EOF, FALSE, LEFT_PAREN, MINUS, NIL, NUMBER, RIGHT_PAREN, SLASH, STAR, STRING, TRUE};
 
 #[allow(dead_code)]
 pub enum Expr<'a> {
     Binary {
         left: Box<Expr<'a>>,
-        operator: Token<'a>,
+        operator: &'a Token<'a>,
         right: Box<Expr<'a>>,
     },
     Grouping {
@@ -33,7 +33,7 @@ impl<'a> Display for Expr<'a> {
                 operator,
                 right,
             } => {
-                write!(f, "({} {} {})", operator, left, right)
+                write!(f, "({} {} {})", String::from_utf8_lossy(operator.lexeme), left, right)
             }
             Grouping { expression } => {
                 write!(f, "(group {})", expression)
@@ -76,6 +76,19 @@ pub(crate) struct Parser<'a, 'b> {
     current: RefCell<usize>,
     lox: &'b Lox,
 }
+
+
+/**
+expression     → equality ;
+equality       → comparison ( ( "!=" | "==" ) comparison )* ;
+comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
+term           → factor ( ( "-" | "+" ) factor )* ;
+factor         → unary ( ( "/" | "*" ) unary )* ;
+unary          → ( "!" | "-" ) unary
+| primary ;
+primary        → NUMBER | STRING | "true" | "false" | "nil"
+| "(" expression ")" ;
+**/
 
 impl<'a, 'b> Parser<'a, 'b> {
     pub(crate) fn new(tokens: &'a Vec<Token>, lox: &'b Lox) -> Self {
@@ -127,7 +140,19 @@ impl<'a, 'b> Parser<'a, 'b> {
     }
 
     fn expression(&self) -> Expr {
-        self.unary()
+        self.factor()
+    }
+    
+    fn factor(&self) -> Expr { 
+        let expr = self.unary();
+        if self.match_token(&[SLASH, STAR]) {
+            return Binary {
+                left: Box::new(expr),
+                operator: self.previous(),
+                right: Box::new(self.factor())
+            }
+        }
+        expr
     }
 
     fn unary(&self) -> Expr {
@@ -152,31 +177,31 @@ impl<'a, 'b> Parser<'a, 'b> {
 
     fn primary(&self) -> Expr {
         if self.match_token(&[STRING]) {
-            return Expr::Literal {
+            return Literal {
                 value: Object::String(self.previous().literal.clone()),
             };
         }
 
         if self.match_token(&[NUMBER]) {
-            return Expr::Literal {
+            return Literal {
                 value: Object::Number(self.previous().literal.parse::<f32>().unwrap()),
             };
         }
 
         if self.match_token(&[TRUE]) {
-            return Expr::Literal {
+            return Literal {
                 value: Object::Boolean(true),
             };
         }
 
         if self.match_token(&[FALSE]) {
-            return Expr::Literal {
+            return Literal {
                 value: Object::Boolean(false),
             };
         }
 
         if self.match_token(&[NIL]) {
-            return Expr::Literal { value: Object::Nil };
+            return Literal { value: Object::Nil };
         }
 
         if self.match_token(&[LEFT_PAREN]) {
