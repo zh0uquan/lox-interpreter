@@ -152,6 +152,7 @@ impl<'a, 'b> Parser<'a, 'b> {
                 right: Box::new(self.term())
             }
         }
+        
         expr
     }
 
