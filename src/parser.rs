@@ -1,8 +1,10 @@
-use crate::parser::Expr::{Binary, Grouping};
-use crate::token::TokenType::{EOF, FALSE, LEFT_PAREN, NIL, NUMBER, RIGHT_PAREN, STRING, TRUE};
-use crate::token::{Token, TokenType};
 use std::cell::RefCell;
 use std::fmt::{Display, Formatter};
+
+use crate::Lox;
+use crate::parser::Expr::Grouping;
+use crate::token::{Token, TokenType};
+use crate::token::TokenType::{EOF, FALSE, LEFT_PAREN, NIL, NUMBER, STRING, TRUE};
 
 #[allow(dead_code)]
 pub enum Expr<'a> {
@@ -69,16 +71,18 @@ impl Display for Object {
     }
 }
 
-pub(crate) struct Parser<'a> {
+pub(crate) struct Parser<'a, 'b> {
     tokens: &'a Vec<Token<'a>>,
     current: RefCell<usize>,
+    lox: &'b Lox,
 }
 
-impl<'a> Parser<'a> {
-    pub(crate) fn new(tokens: &'a Vec<Token>) -> Self {
+impl<'a, 'b> Parser<'a, 'b> {
+    pub(crate) fn new(tokens: &'a Vec<Token>, lox: &'b Lox) -> Self {
         Parser {
             tokens,
             current: RefCell::new(0),
+            lox,
         }
     }
 
@@ -111,17 +115,12 @@ impl<'a> Parser<'a> {
         &self.tokens[*self.current.borrow() - 1]
     }
 
-    fn consume(&self, token: &'a Token<'a>, message: &'static str) {
+    fn consume(&self, token: &'a Token<'a>, message: String) {
         if self.check(token.token_type) {
             self.advance();
         }
-        self.error(token, message)
+        self.lox.error(token, message)
     }
-
-    fn error(&self, token: &'a Token, message: &'static str) {
-        eprintln!("{}", message)
-    }
-
     pub(crate) fn parse(&self) -> Expr {
         self.expression()
     }
@@ -148,7 +147,7 @@ impl<'a> Parser<'a> {
             NIL => Expr::Literal { value: Object::Nil },
             LEFT_PAREN => {
                 let expr = self.expression();
-                self.consume(self.peek(), "Error: Unmatched parentheses.");
+                self.consume(self.peek(), "Error: Unmatched parentheses.".into());
                 Grouping {
                     expression: Box::new(expr),
                 }

@@ -86,9 +86,9 @@ pub fn try_get_keyword(keyword: &str) -> Option<TokenType> {
 #[allow(dead_code)]
 pub struct Token<'a> {
     pub(crate) token_type: TokenType,
-    lexeme: &'a [u8],
+    pub(crate) lexeme: &'a [u8],
     pub(crate) literal: String,
-    line: usize,
+    pub(crate) line: usize,
 }
 
 impl<'a> Token<'a> {

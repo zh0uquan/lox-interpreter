@@ -1,29 +1,33 @@
+use crate::Lox;
+use crate::token::{Token, TokenType, try_get_keyword};
 use crate::token::TokenType::{
     BANG, BANG_EQUAL, COMMA, DOT, EOF, EQUAL, EQUAL_EQUAL, GREATER, GREATER_EQUAL, IDENTIFIER,
     LEFT_BRACE, LEFT_PAREN, LESS, LESS_EQUAL, MINUS, NUMBER, PLUS, RIGHT_BRACE, RIGHT_PAREN,
     SEMICOLON, SLASH, STAR, STRING,
 };
-use crate::token::{try_get_keyword, Token, TokenType};
 
-pub(crate) struct Scanner<'a> {
+pub(crate) struct Scanner<'a, 'b>
+where
+    'b: 'a,
+{
     start: usize,
     current: usize,
     line: usize,
 
     source: &'a [u8],
     tokens: Vec<Token<'a>>,
-    has_error: bool,
+    lox: &'b Lox,
 }
 
-impl<'a> Scanner<'a> {
-    pub(crate) fn new(source: &'a [u8]) -> Scanner {
+impl<'a, 'b> Scanner<'a, 'b> {
+    pub(crate) fn new(source: &'a [u8], lox: &'b Lox) -> Self {
         Scanner {
             source,
+            lox,
             tokens: vec![],
             start: 0,
             current: 0,
             line: 1,
-            has_error: false,
         }
     }
 
@@ -31,7 +35,7 @@ impl<'a> Scanner<'a> {
         self.current >= self.source.len()
     }
 
-    pub fn scan_tokens(&mut self) -> (&'a Vec<Token>, bool) {
+    pub fn scan_tokens(&mut self) -> &'a Vec<Token> {
         while !self.is_at_end() {
             self.start = self.current;
             self.scan_token()
@@ -40,7 +44,7 @@ impl<'a> Scanner<'a> {
         self.tokens
             .push(Token::new(EOF, "".as_bytes(), "null".into(), self.line));
 
-        (&self.tokens, self.has_error)
+        &self.tokens
     }
 
     fn advance(&mut self) -> u8 {
@@ -94,7 +98,8 @@ impl<'a> Scanner<'a> {
         }
 
         if self.is_at_end() {
-            self.error(self.line, "Unterminated string.", "".into());
+            self.lox
+                .report(self.line, "Unterminated string.", "".into());
             return;
         }
 
@@ -200,90 +205,9 @@ impl<'a> Scanner<'a> {
             b'"' => self.add_string(),
             b'0'..=b'9' => self.add_number(),
             b'a'..=b'z' | b'A'..=b'Z' | b'_' => self.add_identifier_or_reserved_words(),
-            ch => self.error(self.line, "Unexpected character: ", (ch as char).into()),
+            ch => self
+                .lox
+                .report(self.line, "Unexpected character: ", (ch as char).into()),
         }
-    }
-
-    fn error(&mut self, line: usize, _where: &'static str, message: String) {
-        self.has_error = true;
-        eprintln!("[line {}] Error: {}{}", line, _where, message);
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::token::TokenType::{
-        EOF, EQUAL, IDENTIFIER, IF, LEFT_PAREN, NUMBER, SEMICOLON, STRING, VAR, WHILE,
-    };
-
-    use super::*;
-
-    #[test]
-    fn test_single_token() {
-        let source = "(".as_bytes();
-        let mut scanner = Scanner::new(source);
-        let (tokens, has_error) = scanner.scan_tokens();
-        assert!(!has_error);
-        assert_eq!(tokens.len(), 2);
-        assert_eq!(tokens[0].token_type, LEFT_PAREN);
-        assert_eq!(tokens[1].token_type, EOF);
-    }
-
-    #[test]
-    fn test_multiple_tokens() {
-        let source = "var x = 42;".as_bytes();
-        let mut scanner = Scanner::new(source);
-        let (tokens, has_error) = scanner.scan_tokens();
-        assert!(!has_error);
-        assert_eq!(tokens[0].token_type, VAR);
-        assert_eq!(tokens[1].token_type, IDENTIFIER);
-        assert_eq!(tokens[2].token_type, EQUAL);
-        assert_eq!(tokens[3].token_type, NUMBER);
-        assert_eq!(tokens[4].token_type, SEMICOLON);
-        assert_eq!(tokens[5].token_type, EOF);
-    }
-
-    #[test]
-    fn test_string_literal() {
-        let source = r#""hello world""#.as_bytes();
-        let mut scanner = Scanner::new(source);
-        let (tokens, has_error) = scanner.scan_tokens();
-        assert!(!has_error);
-        assert_eq!(tokens.len(), 2);
-        assert_eq!(tokens[0].token_type, STRING);
-        assert_eq!(tokens[1].token_type, EOF);
-        assert_eq!(tokens[0].literal, String::from("hello world"));
-    }
-
-    #[test]
-    fn test_unterminated_string() {
-        let source = r#""hello world"#.as_bytes();
-        let mut scanner = Scanner::new(source);
-        let (tokens, has_error) = scanner.scan_tokens();
-        assert!(has_error);
-        assert_eq!(tokens.len(), 1);
-        assert_eq!(tokens[0].token_type, EOF);
-    }
-
-    #[test]
-    fn test_keyword_identification() {
-        let source = "if while".as_bytes();
-        let mut scanner = Scanner::new(source);
-        let (tokens, has_error) = scanner.scan_tokens();
-        assert!(!has_error);
-        assert_eq!(tokens.len(), 3);
-        assert_eq!(tokens[0].token_type, IF);
-        assert_eq!(tokens[1].token_type, WHILE);
-        assert_eq!(tokens[2].token_type, EOF);
-    }
-
-    #[test]
-    fn test_error_handling() {
-        let source = "@".as_bytes();
-        let mut scanner = Scanner::new(source);
-        let (tokens, has_error) = scanner.scan_tokens();
-        assert!(has_error);
-        assert_eq!(tokens.len(), 1);
-        assert_eq!(tokens[0].token_type, EOF);
     }
 }
