@@ -83,6 +83,7 @@ pub fn try_get_keyword(keyword: &str) -> Option<TokenType> {
         .map(|(_, token_type)| token_type)
 }
 
+#[allow(dead_code)]
 pub struct Token<'a> {
     pub(crate) token_type: TokenType,
     lexeme: &'a [u8],
