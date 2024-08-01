@@ -142,14 +142,14 @@ impl<'a, 'b> Parser<'a, 'b> {
     fn expression(&self) -> Expr {
         self.factor()
     }
-    
-    fn factor(&self) -> Expr { 
-        let expr = self.unary();
-        if self.match_token(&[SLASH, STAR]) {
-            return Binary {
+
+    fn factor(&self) -> Expr {
+        let mut expr = self.unary();
+        while self.match_token(&[SLASH, STAR]) {
+            expr = Binary {
                 left: Box::new(expr),
                 operator: self.previous(),
-                right: Box::new(self.factor())
+                right: Box::new(self.unary())
             }
         }
         expr
