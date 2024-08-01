@@ -1,5 +1,6 @@
-use crate::token::Token;
-use crate::token::TokenType::{EOF, FALSE, NIL, NUMBER, STRING, TRUE};
+use crate::parser::Expr::{Binary, Grouping};
+use crate::token::TokenType::{EOF, FALSE, LEFT_PAREN, NIL, NUMBER, RIGHT_PAREN, STRING, TRUE};
+use crate::token::{Token, TokenType};
 use std::cell::RefCell;
 use std::fmt::{Display, Formatter};
 
@@ -61,7 +62,7 @@ impl Display for Object {
                 } else {
                     write!(f, "{}", n)
                 }
-            },
+            }
             Object::String(s) => write!(f, "{}", s),
             Object::Boolean(b) => write!(f, "{}", b),
         }
@@ -95,11 +96,41 @@ impl<'a> Parser<'a> {
         self.previous()
     }
 
+    fn check(&self, token_type: TokenType) -> bool {
+        if self.is_at_end() {
+            return false;
+        }
+        self.peek().token_type == token_type
+    }
+
+    fn peek(&self) -> &'a Token<'a> {
+        &self.tokens[*self.current.borrow()]
+    }
+
     fn previous(&self) -> &'a Token<'a> {
         &self.tokens[*self.current.borrow() - 1]
     }
 
-    pub(crate) fn parse(&mut self) -> Expr {
+    fn consume(&self, token: &'a Token<'a>, message: &'static str) {
+        if self.check(token.token_type) {
+            self.advance();
+        }
+        self.error(token, message)
+    }
+
+    fn error(&self, token: &'a Token, message: &'static str) {
+        eprintln!("{}", message)
+    }
+
+    pub(crate) fn parse(&self) -> Expr {
+        self.expression()
+    }
+
+    fn expression(&self) -> Expr {
+        self.primary()
+    }
+
+    fn primary(&self) -> Expr {
         let literal = self.advance();
         match literal.token_type {
             STRING => Expr::Literal {
@@ -115,6 +146,13 @@ impl<'a> Parser<'a> {
                 value: Object::Boolean(false),
             },
             NIL => Expr::Literal { value: Object::Nil },
+            LEFT_PAREN => {
+                let expr = self.expression();
+                self.consume(self.peek(), "Error: Unmatched parentheses.");
+                Grouping {
+                    expression: Box::new(expr),
+                }
+            }
             _ => unimplemented!(),
         }
     }

@@ -1,6 +1,6 @@
 use std::fmt::{Display, Formatter};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Copy, Clone)]
 #[allow(non_camel_case_types, dead_code)]
 pub enum TokenType {
     // Single-character tokens
