@@ -42,7 +42,7 @@ impl<'a> Display for Expr<'a> {
                 write!(f, "{}", value)
             }
             Unary { operator, right } => {
-                write!(f, "{} {}", String::from_utf8_lossy(operator.lexeme), right)
+                write!(f, "({} {})", String::from_utf8_lossy(operator.lexeme), right)
             }
         }
     }
