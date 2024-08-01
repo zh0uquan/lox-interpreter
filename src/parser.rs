@@ -4,7 +4,7 @@ use std::fmt::{Display, Formatter};
 use crate::Lox;
 use crate::parser::Expr::{Binary, Grouping, Literal, Unary};
 use crate::token::{Token, TokenType};
-use crate::token::TokenType::{BANG, EOF, FALSE, LEFT_PAREN, MINUS, NIL, NUMBER, RIGHT_PAREN, SLASH, STAR, STRING, TRUE};
+use crate::token::TokenType::{BANG, EOF, FALSE, LEFT_PAREN, MINUS, NIL, NUMBER, PLUS, RIGHT_PAREN, SLASH, STAR, STRING, TRUE};
 
 #[allow(dead_code)]
 pub enum Expr<'a> {
@@ -140,7 +140,19 @@ impl<'a, 'b> Parser<'a, 'b> {
     }
 
     fn expression(&self) -> Expr {
-        self.factor()
+        self.term()
+    }
+
+    fn term(&self) -> Expr {
+        let mut expr = self.factor();
+        while self.match_token(&[MINUS, PLUS]) {
+            expr = Binary {
+                left: Box::new(expr),
+                operator: self.previous(),
+                right: Box::new(self.term())
+            }
+        }
+        expr
     }
 
     fn factor(&self) -> Expr {
