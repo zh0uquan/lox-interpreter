@@ -1,6 +1,5 @@
 use std::cell::RefCell;
 use std::fmt::{Display, Formatter};
-use rand::random;
 
 use crate::Lox;
 use crate::parser::Expr::Grouping;
