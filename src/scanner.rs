@@ -121,7 +121,7 @@ impl<'a> Scanner<'a> {
             }
         }
         let str_repr = std::str::from_utf8(&self.source[self.start..self.current]).unwrap();
-        let double = str_repr.parse::<f64>().unwrap();
+        let double = str_repr.parse::<f32>().unwrap();
         let double = if double.fract() == 0.0 {
             format!("{:.1}", double)
         } else {
