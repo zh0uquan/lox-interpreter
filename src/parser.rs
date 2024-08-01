@@ -2,9 +2,9 @@ use std::cell::RefCell;
 use std::fmt::{Display, Formatter};
 
 use crate::Lox;
-use crate::parser::Expr::Grouping;
+use crate::parser::Expr::{Binary, Grouping, Literal, Unary};
 use crate::token::{Token, TokenType};
-use crate::token::TokenType::{EOF, FALSE, LEFT_PAREN, NIL, NUMBER, RIGHT_PAREN, STRING, TRUE};
+use crate::token::TokenType::{BANG, EOF, FALSE, LEFT_PAREN, MINUS, NIL, NUMBER, RIGHT_PAREN, STRING, TRUE};
 
 #[allow(dead_code)]
 pub enum Expr<'a> {
@@ -20,7 +20,7 @@ pub enum Expr<'a> {
         value: Object,
     },
     Unary {
-        operator: Token<'a>,
+        operator: &'a Token<'a>,
         right: Box<Expr<'a>>,
     },
 }
@@ -28,21 +28,21 @@ pub enum Expr<'a> {
 impl<'a> Display for Expr<'a> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Expr::Binary {
+            Binary {
                 left,
                 operator,
                 right,
             } => {
                 write!(f, "({} {} {})", operator, left, right)
             }
-            Expr::Grouping { expression } => {
+            Grouping { expression } => {
                 write!(f, "(group {})", expression)
             }
-            Expr::Literal { value } => {
+            Literal { value } => {
                 write!(f, "{}", value)
             }
-            Expr::Unary { operator, right } => {
-                write!(f, "({} {})", operator, right)
+            Unary { operator, right } => {
+                write!(f, "{} {}", String::from_utf8_lossy(operator.lexeme), right)
             }
         }
     }
@@ -127,6 +127,16 @@ impl<'a, 'b> Parser<'a, 'b> {
     }
 
     fn expression(&self) -> Expr {
+        self.unary()
+    }
+
+    fn unary(&self) -> Expr {
+        if self.match_token(&[BANG, MINUS]) {
+            return Unary {
+                operator: self.previous(),
+                right: Box::new(self.unary()),
+            }
+        }
         self.primary()
     }
 
@@ -176,7 +186,6 @@ impl<'a, 'b> Parser<'a, 'b> {
                 expression: Box::new(expr),
             };
         }
-        
         std::process::exit(65);
     }
 }
