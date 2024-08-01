@@ -28,12 +28,12 @@ impl Lox {
 
     fn error(&self, token: &Token, message: String) {
         if token.token_type == TokenType::EOF {
-            self.report(token.line, " at end", message);
+            self.report(token.line, " at end ", message);
         } else {
             let lexeme_str = String::from_utf8_lossy(token.lexeme);
             self.report(
                 token.line,
-                format!(" at '{}'", lexeme_str).as_str(),
+                format!(" at '{}' ", lexeme_str).as_str(),
                 message,
             );
         }
@@ -68,7 +68,6 @@ impl Lox {
             }
             _ => eprintln!("Unknown command: {}", command),
         }
-
         if *self.has_error.borrow() {
             std::process::exit(65);
         }

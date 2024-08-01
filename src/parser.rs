@@ -1,10 +1,11 @@
 use std::cell::RefCell;
 use std::fmt::{Display, Formatter};
+use rand::random;
 
 use crate::Lox;
 use crate::parser::Expr::Grouping;
 use crate::token::{Token, TokenType};
-use crate::token::TokenType::{EOF, FALSE, LEFT_PAREN, NIL, NUMBER, STRING, TRUE};
+use crate::token::TokenType::{EOF, FALSE, LEFT_PAREN, NIL, NUMBER, RIGHT_PAREN, STRING, TRUE};
 
 #[allow(dead_code)]
 pub enum Expr<'a> {
@@ -115,11 +116,12 @@ impl<'a, 'b> Parser<'a, 'b> {
         &self.tokens[*self.current.borrow() - 1]
     }
 
-    fn consume(&self, token: &'a Token<'a>, message: String) {
-        if self.check(token.token_type) {
+    fn consume(&self, token_type: TokenType, message: String) {
+        if self.check(token_type) {
             self.advance();
+            return;
         }
-        self.lox.error(token, message)
+        self.lox.error(self.peek(), message)
     }
     pub(crate) fn parse(&self) -> Expr {
         self.expression()
@@ -129,30 +131,53 @@ impl<'a, 'b> Parser<'a, 'b> {
         self.primary()
     }
 
-    fn primary(&self) -> Expr {
-        let literal = self.advance();
-        match literal.token_type {
-            STRING => Expr::Literal {
-                value: Object::String(literal.literal.clone()),
-            },
-            NUMBER => Expr::Literal {
-                value: Object::Number(literal.literal.parse::<f32>().unwrap()),
-            },
-            TRUE => Expr::Literal {
-                value: Object::Boolean(true),
-            },
-            FALSE => Expr::Literal {
-                value: Object::Boolean(false),
-            },
-            NIL => Expr::Literal { value: Object::Nil },
-            LEFT_PAREN => {
-                let expr = self.expression();
-                self.consume(self.peek(), "Error: Unmatched parentheses.".into());
-                Grouping {
-                    expression: Box::new(expr),
-                }
+    fn match_token(&self, token_types: &[TokenType]) -> bool {
+        for &token_type in token_types {
+            if self.check(token_type) {
+                self.advance();
+                return true;
             }
-            _ => unimplemented!(),
         }
+        false
+    }
+
+    fn primary(&self) -> Expr {
+        if self.match_token(&[STRING]) {
+            return Expr::Literal {
+                value: Object::String(self.previous().literal.clone()),
+            };
+        }
+
+        if self.match_token(&[NUMBER]) {
+            return Expr::Literal {
+                value: Object::Number(self.previous().literal.parse::<f32>().unwrap()),
+            };
+        }
+
+        if self.match_token(&[TRUE]) {
+            return Expr::Literal {
+                value: Object::Boolean(true),
+            };
+        }
+
+        if self.match_token(&[FALSE]) {
+            return Expr::Literal {
+                value: Object::Boolean(false),
+            };
+        }
+
+        if self.match_token(&[NIL]) {
+            return Expr::Literal { value: Object::Nil };
+        }
+
+        if self.match_token(&[LEFT_PAREN]) {
+            let expr = self.expression();
+            self.consume(RIGHT_PAREN, "Error: Unmatched parentheses.".into());
+            return Grouping {
+                expression: Box::new(expr),
+            };
+        }
+        
+        panic!("not implement!")
     }
 }
