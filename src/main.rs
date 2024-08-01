@@ -38,7 +38,7 @@ impl Lox {
             );
         }
     }
-
+    
     fn run(&self, command: &str, get_file_content_func: impl Fn() -> String) {
         match command {
             "tokenize" => {
@@ -48,9 +48,12 @@ impl Lox {
                 } else {
                     let mut scanner = scanner::Scanner::new(file_contents.as_bytes(), &self);
                     let tokens = scanner.scan_tokens();
-
+                    
                     for token in tokens {
                         println!("{}", token);
+                    }
+                    if *self.has_error.borrow() {
+                        std::process::exit(65);
                     }
                 }
             }
@@ -63,14 +66,15 @@ impl Lox {
                     let tokens = scanner.scan_tokens();
 
                     let mut parser = parser::Parser::new(tokens, &self);
-                    println!("{}", parser.parse());
+                    if *self.has_error.borrow() {
+                        std::process::exit(65);
+                    }
+                    let parsed = parser.parse();
                 }
             }
             _ => eprintln!("Unknown command: {}", command),
         }
-        if *self.has_error.borrow() {
-            std::process::exit(65);
-        }
+
     }
 }
 
