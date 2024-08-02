@@ -73,11 +73,12 @@ impl Display for Object {
         match self {
             Object::Nil => write!(f, "nil"),
             Object::Number(n) => {
-                if n.fract() == 0.0 {
-                    write!(f, "{:.1}", n)
-                } else {
-                    write!(f, "{}", n)
-                }
+                // if n.fract() == 0.0 {
+                //     write!(f, "{:.1}", n)
+                // } else {
+                //     write!(f, "{}", n)
+                // }
+                write!(f, "{}", n)
             }
             Object::String(s) => write!(f, "{}", s),
             Object::Boolean(b) => write!(f, "{}", b),
