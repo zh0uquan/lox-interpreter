@@ -4,6 +4,7 @@ use std::fs;
 
 use crate::token::{Token, TokenType};
 
+mod interpreter;
 mod parser;
 mod scanner;
 mod token;
@@ -39,43 +40,49 @@ impl Lox {
         }
     }
 
-    fn run(&self, command: &str, get_file_content_func: impl Fn() -> String) {
+    fn run(&self, command: &str, file_contents: String) {
+        if file_contents.is_empty() {
+            println!("EOF  null");
+            return;
+        }
         match command {
             "tokenize" => {
-                let file_contents = get_file_content_func();
-                if file_contents.is_empty() {
-                    println!("EOF  null")
-                } else {
-                    let mut scanner = scanner::Scanner::new(file_contents.as_bytes(), &self);
-                    let tokens = scanner.scan_tokens();
+                let mut scanner = scanner::Scanner::new(file_contents.as_bytes(), self);
+                let tokens = scanner.scan_tokens();
 
-                    for token in tokens {
-                        println!("{}", token);
-                    }
-                    if *self.has_error.borrow() {
-                        std::process::exit(65);
-                    }
+                for token in tokens {
+                    println!("{}", token);
+                }
+                if *self.has_error.borrow() {
+                    std::process::exit(65);
                 }
             }
             "parse" => {
-                let file_contents = get_file_content_func();
-                if file_contents.is_empty() {
-                    println!("EOF  null")
-                } else {
-                    let mut scanner = scanner::Scanner::new(file_contents.as_bytes(), &self);
-                    let tokens = scanner.scan_tokens();
+                let mut scanner = scanner::Scanner::new(file_contents.as_bytes(), self);
+                let tokens = scanner.scan_tokens();
 
-                    let mut parser = parser::Parser::new(tokens, &self);
-                    let parsed = parser.parse();
-                    if *self.has_error.borrow() {
-                        std::process::exit(65);
-                    }
-                    println!("{parsed}");
+                let parser = parser::Parser::new(tokens, self);
+                let parsed = parser.parse();
+                if *self.has_error.borrow() {
+                    std::process::exit(65);
+                }
+                println!("{parsed}");
+            }
+            "evaluate" => {
+                let mut scanner = scanner::Scanner::new(file_contents.as_bytes(), self);
+                let tokens = scanner.scan_tokens();
+
+                let parser = parser::Parser::new(tokens, self);
+                let parsed = parser.parse();
+                let interpreter = interpreter::Interpreter::new();
+                let evaluated = interpreter.interpret(parsed);
+                println!("{evaluated}");
+                if *self.has_error.borrow() {
+                    std::process::exit(65);
                 }
             }
             _ => eprintln!("Unknown command: {}", command),
         }
-
     }
 }
 
@@ -97,6 +104,6 @@ fn main() {
     };
 
     let lox = Lox::new();
-
-    lox.run(command.as_str(), || get_file_contents(filename));
+    let file_contents = get_file_contents(filename);
+    lox.run(command.as_str(), file_contents);
 }

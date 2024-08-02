@@ -1,10 +1,10 @@
-use crate::Lox;
-use crate::token::{Token, TokenType, try_get_keyword};
 use crate::token::TokenType::{
     BANG, BANG_EQUAL, COMMA, DOT, EOF, EQUAL, EQUAL_EQUAL, GREATER, GREATER_EQUAL, IDENTIFIER,
     LEFT_BRACE, LEFT_PAREN, LESS, LESS_EQUAL, MINUS, NUMBER, PLUS, RIGHT_BRACE, RIGHT_PAREN,
     SEMICOLON, SLASH, STAR, STRING,
 };
+use crate::token::{try_get_keyword, Token, TokenType};
+use crate::Lox;
 
 pub(crate) struct Scanner<'a, 'b>
 where

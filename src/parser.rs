@@ -1,10 +1,13 @@
 use std::cell::RefCell;
 use std::fmt::{Display, Formatter};
 
-use crate::Lox;
 use crate::parser::Expr::{Binary, Grouping, Literal, Unary};
+use crate::token::TokenType::{
+    BANG, BANG_EQUAL, EOF, EQUAL_EQUAL, FALSE, GREATER, GREATER_EQUAL, LEFT_PAREN, LESS,
+    LESS_EQUAL, MINUS, NIL, NUMBER, PLUS, RIGHT_PAREN, SLASH, STAR, STRING, TRUE,
+};
 use crate::token::{Token, TokenType};
-use crate::token::TokenType::{BANG, BANG_EQUAL, EOF, EQUAL_EQUAL, FALSE, GREATER, GREATER_EQUAL, LEFT_PAREN, LESS, LESS_EQUAL, MINUS, NIL, NUMBER, PLUS, RIGHT_PAREN, SLASH, STAR, STRING, TRUE};
+use crate::Lox;
 
 #[allow(dead_code)]
 pub enum Expr<'a> {
@@ -33,7 +36,13 @@ impl<'a> Display for Expr<'a> {
                 operator,
                 right,
             } => {
-                write!(f, "({} {} {})", String::from_utf8_lossy(operator.lexeme), left, right)
+                write!(
+                    f,
+                    "({} {} {})",
+                    String::from_utf8_lossy(operator.lexeme),
+                    left,
+                    right
+                )
             }
             Grouping { expression } => {
                 write!(f, "(group {})", expression)
@@ -42,7 +51,12 @@ impl<'a> Display for Expr<'a> {
                 write!(f, "{}", value)
             }
             Unary { operator, right } => {
-                write!(f, "({} {})", String::from_utf8_lossy(operator.lexeme), right)
+                write!(
+                    f,
+                    "({} {})",
+                    String::from_utf8_lossy(operator.lexeme),
+                    right
+                )
             }
         }
     }
@@ -76,19 +90,6 @@ pub(crate) struct Parser<'a, 'b> {
     current: RefCell<usize>,
     lox: &'b Lox,
 }
-
-
-/**
-expression     → equality ;
-equality       → comparison ( ( "!=" | "==" ) comparison )* ;
-comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
-term           → factor ( ( "-" | "+" ) factor )* ;
-factor         → unary ( ( "/" | "*" ) unary )* ;
-unary          → ( "!" | "-" ) unary
-| primary ;
-primary        → NUMBER | STRING | "true" | "false" | "nil"
-| "(" expression ")" ;
-**/
 
 impl<'a, 'b> Parser<'a, 'b> {
     pub(crate) fn new(tokens: &'a Vec<Token>, lox: &'b Lox) -> Self {
@@ -149,32 +150,31 @@ impl<'a, 'b> Parser<'a, 'b> {
             expr = Binary {
                 left: Box::new(expr),
                 operator: self.previous(),
-                right: Box::new(self.comparison())
+                right: Box::new(self.comparison()),
             }
         }
         expr
     }
-    
+
     fn comparison(&self) -> Expr {
         let mut expr = self.term();
         while self.match_token(&[GREATER, GREATER_EQUAL, LESS, LESS_EQUAL]) {
             expr = Binary {
                 left: Box::new(expr),
                 operator: self.previous(),
-                right: Box::new(self.term())
+                right: Box::new(self.term()),
             }
         }
         expr
-        
     }
-    
+
     fn term(&self) -> Expr {
         let mut expr = self.factor();
         while self.match_token(&[MINUS, PLUS]) {
             expr = Binary {
                 left: Box::new(expr),
                 operator: self.previous(),
-                right: Box::new(self.factor())
+                right: Box::new(self.factor()),
             }
         }
         expr
@@ -186,7 +186,7 @@ impl<'a, 'b> Parser<'a, 'b> {
             expr = Binary {
                 left: Box::new(expr),
                 operator: self.previous(),
-                right: Box::new(self.unary())
+                right: Box::new(self.unary()),
             }
         }
         expr
@@ -197,7 +197,7 @@ impl<'a, 'b> Parser<'a, 'b> {
             return Unary {
                 operator: self.previous(),
                 right: Box::new(self.unary()),
-            }
+            };
         }
         self.primary()
     }
