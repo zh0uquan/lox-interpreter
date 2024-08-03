@@ -89,6 +89,7 @@ impl Visitor for Interpreter {
                 TokenType::LESS_EQUAL => Object::Boolean(left <= right),
                 TokenType::LESS => Object::Boolean(left < right),
                 TokenType::EQUAL_EQUAL => Object::Boolean(left == right),
+                TokenType::BANG_EQUAL => Object::Boolean(left != right),
                 TokenType::GREATER_EQUAL => Object::Boolean(left >= right),
                 TokenType::GREATER => Object::Boolean(left > right),
                 _ => unimplemented!(),
