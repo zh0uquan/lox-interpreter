@@ -88,6 +88,9 @@ impl Visitor for Interpreter {
                 TokenType::SLASH => Object::Number(left / right),
                 _ => unimplemented!(),
             },
+            (Object::String(left), Object::String(right)) if matches!(operator, TokenType::PLUS) => {
+                Object::String(left + right.as_str())
+            }
             _ => unimplemented!(),
         }
     }
