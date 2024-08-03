@@ -5,7 +5,7 @@ trait Visitor {
     fn visit_unary(&self, operator: TokenType, right: Box<Expr>) -> Object;
     fn visit_expr(&self, expr: Expr) -> Object;
     fn visit_binary(&self, operator: TokenType, left: Box<Expr>, right: Box<Expr>) -> Object;
-    
+
     fn visit_grouping(&self, expr: Box<Expr>) -> Object;
 }
 pub(crate) struct Interpreter;
@@ -86,6 +86,11 @@ impl Visitor for Interpreter {
                 TokenType::MINUS => Object::Number(left - right),
                 TokenType::STAR => Object::Number(left * right),
                 TokenType::SLASH => Object::Number(left / right),
+                TokenType::LESS_EQUAL => Object::Boolean(left <= right),
+                TokenType::LESS => Object::Boolean(left < right),
+                TokenType::EQUAL_EQUAL => Object::Boolean(left == right),
+                TokenType::GREATER_EQUAL => Object::Boolean(left >= right),
+                TokenType::GREATER => Object::Boolean(left > right),
                 _ => unimplemented!(),
             },
             (Object::String(left), Object::String(right)) if matches!(operator, TokenType::PLUS) => {
