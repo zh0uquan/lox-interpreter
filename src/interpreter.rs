@@ -57,6 +57,7 @@ impl Visitor for Interpreter {
         match operator {
             TokenType::BANG => match right_value {
                 Object::Boolean(b) => Object::Boolean(!b),
+                Object::Number(_) => Object::Boolean(false),
                 _ => Object::Nil,
             },
             TokenType::MINUS => match right_value {
