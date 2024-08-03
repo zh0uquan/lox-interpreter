@@ -79,7 +79,7 @@ impl Lox {
                 match interpreter.interpret(parsed) { 
                     Ok(Expr::Literal { value: object }) => println!("{:?}", object),
                     Err(error) => {
-                        println!("\n{}[line 1]", error);
+                        // println!("\n{}[line 1]", error);
                         std::process::exit(70);
                     },
                     Ok(_) => panic!("unreachable code")
