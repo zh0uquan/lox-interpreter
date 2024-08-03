@@ -94,8 +94,11 @@ impl Visitor for Interpreter {
                 TokenType::GREATER => Object::Boolean(left > right),
                 _ => unimplemented!(),
             },
-            (Object::String(left), Object::String(right)) if matches!(operator, TokenType::PLUS) => {
-                Object::String(left + right.as_str())
+            (Object::String(left), Object::String(right)) => match operator {
+                TokenType::PLUS => Object::String(left + right.as_str()),
+                TokenType::EQUAL_EQUAL => Object::Boolean(left == right),
+                TokenType::BANG_EQUAL => Object::Boolean(!(left == right)),
+                _ => unimplemented!()
             }
             _ => unimplemented!(),
         }
