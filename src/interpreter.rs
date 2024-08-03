@@ -29,7 +29,7 @@ impl Interpreter {
         }
     }
 
-    fn ensure_literal<'b, 'a>(&'b self, mut expr: Box<Expr<'a>>) -> Object
+    fn ensure_literal<'a, 'b>(&'b self, mut expr: Box<Expr<'a>>) -> Object
     where
         'b: 'a,
     {
@@ -46,22 +46,6 @@ impl Interpreter {
 }
 
 impl Visitor for Interpreter {
-    fn visitor_binary(&self, operator: TokenType, left: Box<Expr>, right: Box<Expr>) -> Object {
-        let left_value = self.ensure_literal(left);
-        let right_value = self.ensure_literal(right);
-
-        match (left_value, right_value) {
-            (Object::Number(left), Object::Number(right)) => match operator {
-                TokenType::PLUS => Object::Number(left + right),
-                TokenType::MINUS => Object::Number(left - right),
-                TokenType::STAR => Object::Number(left * right),
-                TokenType::SLASH => Object::Number(left / right),
-                _ => unimplemented!(),
-            },
-            _ => unimplemented!(),
-        }
-    }
-
     fn visit_unary(&self, operator: TokenType, right: Box<Expr>) -> Object {
         let right_value = self.ensure_literal(right);
         match operator {
@@ -82,6 +66,22 @@ impl Visitor for Interpreter {
             value
         } else {
             Object::Nil
+        }
+    }
+
+    fn visitor_binary(&self, operator: TokenType, left: Box<Expr>, right: Box<Expr>) -> Object {
+        let left_value = self.ensure_literal(left);
+        let right_value = self.ensure_literal(right);
+
+        match (left_value, right_value) {
+            (Object::Number(left), Object::Number(right)) => match operator {
+                TokenType::PLUS => Object::Number(left + right),
+                TokenType::MINUS => Object::Number(left - right),
+                TokenType::STAR => Object::Number(left * right),
+                TokenType::SLASH => Object::Number(left / right),
+                _ => unimplemented!(),
+            },
+            _ => unimplemented!(),
         }
     }
 }

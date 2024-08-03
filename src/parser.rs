@@ -1,5 +1,5 @@
 use std::cell::RefCell;
-use std::fmt::{Display, Formatter};
+use std::fmt::{Debug, Display, Formatter};
 
 use crate::parser::Expr::{Binary, Grouping, Literal, Unary};
 use crate::token::TokenType::{
@@ -73,18 +73,29 @@ impl Display for Object {
         match self {
             Object::Nil => write!(f, "nil"),
             Object::Number(n) => {
-                // if n.fract() == 0.0 {
-                //     write!(f, "{:.1}", n)
-                // } else {
-                //     write!(f, "{}", n)
-                // }
-                write!(f, "{}", n)
+                if n.fract() == 0.0 {
+                    write!(f, "{:.1}", n)
+                } else {
+                    write!(f, "{}", n)
+                }
             }
             Object::String(s) => write!(f, "{}", s),
             Object::Boolean(b) => write!(f, "{}", b),
         }
     }
 }
+
+impl Debug for Object {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Object::Number(n) => {
+                write!(f, "{}", n)
+            }
+            _ => write!(f, "{}", self)
+        }
+    }
+}
+
 
 pub(crate) struct Parser<'a, 'b> {
     tokens: &'a Vec<Token<'a>>,

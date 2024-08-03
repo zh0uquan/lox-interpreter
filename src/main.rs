@@ -1,6 +1,7 @@
 use std::cell::RefCell;
 use std::env;
 use std::fs;
+use crate::parser::Expr;
 
 use crate::token::{Token, TokenType};
 
@@ -66,7 +67,7 @@ impl Lox {
                 if *self.has_error.borrow() {
                     std::process::exit(65);
                 }
-                println!("{parsed}");
+                println!("{}", parsed);
             }
             "evaluate" => {
                 let mut scanner = scanner::Scanner::new(file_contents.as_bytes(), self);
@@ -75,8 +76,9 @@ impl Lox {
                 let parser = parser::Parser::new(tokens, self);
                 let parsed = parser.parse();
                 let interpreter = interpreter::Interpreter::new();
-                let evaluated = interpreter.interpret(parsed);
-                println!("{evaluated}");
+                if let Expr::Literal { value: object } = interpreter.interpret(parsed) {
+                    println!("{:?}", object);
+                }
                 if *self.has_error.borrow() {
                     std::process::exit(65);
                 }
