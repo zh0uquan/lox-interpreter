@@ -1,5 +1,6 @@
 use std::fmt::{Display, Formatter};
-use crate::parser::{Expr, Object};
+use crate::interpreter;
+use crate::parser::{Expr, Object, Statement};
 use crate::token::{Token, TokenType};
 
 #[derive(Debug)]
@@ -22,9 +23,10 @@ impl Display for RuntimeError {
 
 trait Visitor {
     fn visit_unary(&self, operator: &Token, right: Box<Expr>) -> Result<Object, RuntimeError>;
-    fn visit_expr(&self, expr: Expr) -> Result<Object, RuntimeError>;
+    fn visit_expr(&self, expr: Box<Expr>) -> Result<Object, RuntimeError>;
     fn visit_binary(&self, operator: &Token, left: Box<Expr>, right: Box<Expr>) -> Result<Object, RuntimeError>;
     fn visit_grouping(&self, expr: Box<Expr>) -> Result<Object, RuntimeError>;
+    fn visit_print_stmt(&self, expr: Box<Expr>) -> Result<Expr, RuntimeError>;
 }
 
 pub(crate) struct Interpreter;
@@ -34,30 +36,24 @@ impl Interpreter {
         Interpreter {}
     }
 
-    pub(crate) fn interpret(&self, expr: Expr) -> Result<Expr, RuntimeError> {
-        match expr {
-            Expr::Literal { value } => Ok(Expr::Literal { value }),
-            Expr::Unary { operator, right } => {
-                let value = self.visit_unary(&operator, right)?;
-                Ok(Expr::Literal { value })
-            },
-            Expr::Binary { operator, left, right } => {
-                let value = self.visit_binary(&operator, left, right)?;
-                Ok(Expr::Literal { value })
-            },
-            Expr::Grouping { expression } => {
-                let value = self.visit_grouping(expression)?;
-                Ok(Expr::Literal { value })
-            }
-        }
+    pub(crate) fn interpret(&self, stmts: Vec<Statement>) -> Result<Vec<Expr>, RuntimeError> {
+        stmts
+            .into_iter()
+            .map(
+                |stmt| match stmt {
+                    Statement::PrintStmt(expr) => self.visit_print_stmt(Box::new(expr)),
+                    Statement::ExprStmt(_) => unimplemented!()
+                }
+            ).collect()
     }
+
 
     fn ensure_literal<'a, 'b>(&'b self, mut expr: Box<Expr<'a>>) -> Result<Object, RuntimeError>
         where
             'b: 'a,
     {
         while !matches!(*expr, Expr::Literal { .. }) {
-            expr = Box::new(self.interpret(*expr)?);
+            expr = Box::new(self.visit_print_stmt(expr)?);
         }
 
         if let Expr::Literal { value } = *expr {
@@ -86,8 +82,8 @@ impl Visitor for Interpreter {
         }
     }
 
-    fn visit_expr(&self, expr: Expr) -> Result<Object, RuntimeError> {
-        if let Expr::Literal { value } = expr {
+    fn visit_expr(&self, expr: Box<Expr>) -> Result<Object, RuntimeError> {
+        if let Expr::Literal { value } = *expr {
             Ok(value)
         } else {
             Err(RuntimeError::new("Expected literal expression.".to_string(), Token::default()))
@@ -131,5 +127,23 @@ impl Visitor for Interpreter {
 
     fn visit_grouping(&self, expr: Box<Expr>) -> Result<Object, RuntimeError> {
         self.ensure_literal(expr)
+    }
+
+    fn visit_print_stmt(&self, expr: Box<Expr>) -> Result<Expr, RuntimeError> {
+        match *expr {
+            Expr::Literal { value } => Ok(Expr::Literal { value }),
+            Expr::Unary { operator, right } => {
+                let value = self.visit_unary(operator, right)?;
+                Ok(Expr::Literal { value })
+            },
+            Expr::Binary { operator, left, right } => {
+                let value = self.visit_binary(operator, left, right)?;
+                Ok(Expr::Literal { value })
+            },
+            Expr::Grouping { expression } => {
+                let value = self.visit_grouping(expression)?;
+                Ok(Expr::Literal { value })
+            }
+        }
     }
 }

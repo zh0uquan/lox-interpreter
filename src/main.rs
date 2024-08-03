@@ -1,7 +1,8 @@
 use std::cell::RefCell;
 use std::env;
 use std::fs;
-use crate::parser::Expr;
+use crate::parser::{Expr, Statement};
+use crate::parser::Expr::Literal;
 
 use crate::token::{Token, TokenType};
 
@@ -63,27 +64,35 @@ impl Lox {
                 let tokens = scanner.scan_tokens();
 
                 let parser = parser::Parser::new(tokens, self);
-                let parsed = parser.parse();
+                let parsed_stmts = parser.parse();
                 if *self.has_error.borrow() {
                     std::process::exit(65);
                 }
-                println!("{}", parsed);
+                for stmt in parsed_stmts {
+                    println!("{}", stmt);
+                }
             }
             "evaluate" => {
                 let mut scanner = scanner::Scanner::new(file_contents.as_bytes(), self);
                 let tokens = scanner.scan_tokens();
 
                 let parser = parser::Parser::new(tokens, self);
-                let parsed = parser.parse();
+                let parsed_stmts = parser.parse();
                 let interpreter = interpreter::Interpreter::new();
-                match interpreter.interpret(parsed) { 
-                    Ok(Expr::Literal { value: object }) => println!("{:?}", object),
-                    Err(error) => {
-                        // println!("\n{}[line 1]", error);
+                match interpreter.interpret(parsed_stmts) {
+                    Ok(exprs) => {
+                        exprs.iter().for_each(|expr| 
+                            match expr {
+                                Literal { value: obj } => println!("{:?}", obj),
+                                _ => unreachable!()
+                            }
+                        );
+                    }
+                    Err(err) => {
+                        println!("{}", err);
                         std::process::exit(70);
-                    },
-                    Ok(_) => panic!("unreachable code")
-                }
+                    }
+                };
                 if *self.has_error.borrow() {
                     std::process::exit(65);
                 }

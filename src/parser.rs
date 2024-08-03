@@ -1,15 +1,26 @@
 use std::cell::RefCell;
 use std::fmt::{Debug, Display, Formatter};
 
-use crate::parser::Expr::{Binary, Grouping, Literal, Unary};
-use crate::token::TokenType::{
-    BANG, BANG_EQUAL, EOF, EQUAL_EQUAL, FALSE, GREATER, GREATER_EQUAL, LEFT_PAREN, LESS,
-    LESS_EQUAL, MINUS, NIL, NUMBER, PLUS, RIGHT_PAREN, SLASH, STAR, STRING, TRUE,
-};
-use crate::token::{Token, TokenType};
 use crate::Lox;
+use crate::parser::Expr::{Binary, Grouping, Literal, Unary};
+use crate::token::{Token, TokenType};
+use crate::token::TokenType::{BANG, BANG_EQUAL, EOF, EQUAL_EQUAL, FALSE, GREATER, GREATER_EQUAL, LEFT_PAREN, LESS, LESS_EQUAL, MINUS, NIL, NUMBER, PLUS, PRINT, RIGHT_PAREN, SEMICOLON, SLASH, STAR, STRING, TRUE};
 
-#[allow(dead_code)]
+pub enum Statement<'a> {
+    ExprStmt(Expr<'a>),
+    PrintStmt(Expr<'a>)
+}
+
+impl<'a> Display for Statement<'a> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self { 
+            Statement::ExprStmt(expr) => write!(f, "{};", expr),
+            Statement::PrintStmt(expr) => write!(f, "print {};", expr)
+        }
+    }
+}
+
+
 pub enum Expr<'a> {
     Binary {
         left: Box<Expr<'a>>,
@@ -96,7 +107,6 @@ impl Debug for Object {
     }
 }
 
-
 pub(crate) struct Parser<'a, 'b> {
     tokens: &'a Vec<Token<'a>>,
     current: RefCell<usize>,
@@ -148,8 +158,23 @@ impl<'a, 'b> Parser<'a, 'b> {
         }
         self.lox.error(self.peek(), message)
     }
-    pub(crate) fn parse(&self) -> Expr {
-        self.expression()
+    pub(crate) fn parse(&self) -> Vec<Statement> {
+        let mut stmts = vec![];
+        while !self.is_at_end() {
+            stmts.push(self.statement());
+        }
+        stmts
+    }
+    
+    fn statement(&self) -> Statement {
+        if self.match_token(&[PRINT]) {
+           let expr = self.expression();
+           self.consume(SEMICOLON, "Error: missing semicolon at end".into());
+           return Statement::PrintStmt(expr);
+        }
+        let expr = self.expression();
+        self.consume(SEMICOLON, "Error: missing semicolon at end".into());
+        Statement::ExprStmt(expr)
     }
 
     fn expression(&self) -> Expr {
