@@ -78,7 +78,10 @@ impl Lox {
                 let interpreter = interpreter::Interpreter::new();
                 match interpreter.interpret(parsed) { 
                     Ok(Expr::Literal { value: object }) => println!("{:?}", object),
-                    Err(error) => println!("{}", error),
+                    Err(error) => {
+                        println!("{}", error);
+                        std::process::exit(70);
+                    },
                     Ok(_) => panic!("unreachable code")
                 }
                 if *self.has_error.borrow() {
