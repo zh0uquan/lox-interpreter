@@ -1,11 +1,10 @@
 use std::cell::RefCell;
 use std::env;
 use std::fs;
-use crate::parser::Expr;
 
 use crate::token::{Token, TokenType};
 
-mod enviornment;
+mod environment;
 mod interpreter;
 mod parser;
 mod scanner;

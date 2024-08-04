@@ -56,7 +56,11 @@ pub enum Expr<'a> {
     },
     Variable {
         value: String
-    }
+    },
+    // Assign {
+    //     operator: &'a Token<'a>,
+    //     value: String
+    // }
 }
 
 impl<'a> Display for Expr<'a> {

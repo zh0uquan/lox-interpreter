@@ -1,9 +1,8 @@
 use std::cell::RefCell;
-use std::env::var;
 use std::fmt::{Display, Formatter};
 use std::rc::Rc;
 
-use crate::enviornment::Environment;
+use crate::environment::Environment;
 use crate::parser::{Declaration, Expr, Object, Statement};
 use crate::token::{Token, TokenType};
 
@@ -222,19 +221,19 @@ impl Visitor for Interpreter {
     fn visit_var_decl(&self, decl: Box<Expr>) -> Result<Expr, RuntimeError> {
         match *decl {
             Expr::Unary { operator, right } => match *right {
-                Expr::Variable { value: obj } => {
+                Expr::Variable { value: identifier } => {
                     self.environment.borrow_mut().set_var(
-                        obj.clone(), Object::Nil,
+                        identifier.clone(), Object::Nil,
                     );
-                    Ok(Expr::Variable { value: obj })
+                    Ok(Expr::Variable { value: identifier })
                 }
                 Expr::Binary { operator, left, right } => {
-                    let obj = self.ensure_literal(right)?;
-                    if let Expr::Variable { value } = *left {
+                    let value = self.ensure_literal(right)?;
+                    if let Expr::Variable { value: identifier } = *left {
                         self.environment.borrow_mut().set_var(
-                            value, obj.clone(),
+                            identifier.clone(), value.clone(),
                         );
-                        return Ok(Expr::Variable { value: obj.to_string() });
+                        return Ok(Expr::Variable { value: identifier });
                     }
                     unreachable!();
                 }
