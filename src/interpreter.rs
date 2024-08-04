@@ -4,7 +4,6 @@ use std::rc::Rc;
 
 use crate::environment::Environment;
 use crate::parser::{Declaration, Expr, Object, Statement};
-use crate::parser::Expr::Literal;
 use crate::token::{Token, TokenType};
 
 #[derive(Debug)]
@@ -194,7 +193,7 @@ impl Visitor for Interpreter {
                 let obj = self.ensure_literal(value)?;
                 self.environment.borrow_mut().set_var(identifier.clone(), obj.clone());
                 Ok(Expr::Assign {
-                    identifier, value: Box::new(Literal {value: obj})
+                    identifier, value: Box::new(Expr::Literal {value: obj})
                 })
             }
             _ => unreachable!()
