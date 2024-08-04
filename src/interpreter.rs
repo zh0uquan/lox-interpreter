@@ -241,7 +241,7 @@ impl Visitor for Interpreter {
             Expr::Assign { identifier, value } => {
                 let assignment = self.visit_assignment(identifier, value)?;
                 match assignment {
-                    Expr::Assign { identifier, value } => Ok(*value),
+                    Expr::Assign { identifier: _, value } => Ok(*value),
                     _ => unreachable!(),
                 }
             }
@@ -256,7 +256,7 @@ impl Visitor for Interpreter {
     }
     fn visit_var_decl(&self, decl: Box<Expr>) -> Result<Expr, RuntimeError> {
         match *decl {
-            Expr::Unary { operator, right } => match *right {
+            Expr::Unary { operator: _, right } => match *right {
                 Expr::Variable { identifier } => {
                     self.environment
                         .borrow_mut()
@@ -264,7 +264,7 @@ impl Visitor for Interpreter {
                     Ok(Expr::Variable { identifier })
                 }
                 Expr::Binary {
-                    operator,
+                    operator: _,
                     left,
                     right,
                 } => {
