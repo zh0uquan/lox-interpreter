@@ -83,9 +83,7 @@ impl Lox {
                 let interpreter = interpreter::Interpreter::new();
                 match interpreter.interpret(res) {
                     Ok(exprs) => {
-                        exprs.iter().for_each(|expr|
-                            println!("{}", expr)
-                        );
+                        exprs.iter().for_each(|expr| println!("{}", expr));
                     }
                     Err(err) => {
                         println!("{}", err);

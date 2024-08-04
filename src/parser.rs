@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use std::fmt::{Debug, Display, Formatter};
 
-use crate::parser::Expr::{Binary, Grouping, Literal, Unary, Variable, Assign};
+use crate::parser::Expr::{Assign, Binary, Grouping, Literal, Unary, Variable};
 use crate::token::TokenType::{
     BANG, BANG_EQUAL, EOF, EQUAL, EQUAL_EQUAL, FALSE, GREATER, GREATER_EQUAL, IDENTIFIER,
     LEFT_PAREN, LESS, LESS_EQUAL, MINUS, NIL, NUMBER, PLUS, PRINT, RIGHT_PAREN,
@@ -55,12 +55,12 @@ pub enum Expr<'a> {
         right: Box<Expr<'a>>,
     },
     Variable {
-        identifier: String
+        identifier: String,
     },
     Assign {
         identifier: String,
-        value: Box<Expr<'a>>
-    }
+        value: Box<Expr<'a>>,
+    },
 }
 
 impl<'a> Display for Expr<'a> {
@@ -92,9 +92,11 @@ impl<'a> Display for Expr<'a> {
                     String::from_utf8_lossy(operator.lexeme),
                     right
                 )
-            },
-            Variable { identifier: value } => write!(f, "variable {}", value ),
-            Assign { identifier, value } => write!(f, "variable {:?} = {}", identifier, value)
+            }
+            Variable { identifier: value } => write!(f, "variable {}", value),
+            Assign { identifier, value } => {
+                write!(f, "variable {:?} = {}", identifier, value)
+            }
         }
     }
 }
@@ -248,7 +250,10 @@ impl<'a, 'b> Parser<'a, 'b> {
             let value = self.assignment();
 
             if let Variable { identifier } = expr {
-                return Assign { identifier, value: Box::new(value)}
+                return Assign {
+                    identifier,
+                    value: Box::new(value),
+                };
             }
             self.lox.error(equal, "Invalid assignment target.".into());
         }

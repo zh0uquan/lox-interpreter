@@ -17,7 +17,7 @@ impl Environment {
             RuntimeError::new(format!("Undefined variable {identifier}."), VAR)
         })
     }
-    
+
     pub fn set_var(&mut self, identifier: String, object: Object) {
         self.var_map.insert(identifier, object);
     }

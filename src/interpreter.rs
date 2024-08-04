@@ -38,6 +38,11 @@ trait Visitor {
         right: Box<Expr>,
     ) -> Result<Object, RuntimeError>;
     fn visit_grouping(&self, expr: Box<Expr>) -> Result<Object, RuntimeError>;
+    fn visit_assignment(
+        &self,
+        identifier: String,
+        value: Box<Expr>,
+    ) -> Result<Expr, RuntimeError>;
     fn visit_expr_stmt(&self, expr: Box<Expr>) -> Result<Expr, RuntimeError>;
 
     fn visit_print_stmt(&self, expr: Box<Expr>) -> Result<Expr, RuntimeError>;
@@ -64,18 +69,17 @@ impl Interpreter {
             .into_iter()
             .map(|decl| match decl {
                 Declaration::VarDecl(decl) => self.visit_var_decl(Box::new(decl)),
-                Declaration::Statement(stmt) => self.visit_stmt(stmt)
+                Declaration::Statement(stmt) => self.visit_stmt(stmt),
             })
             .collect()
     }
-
 
     fn ensure_literal<'a, 'b>(
         &'b self,
         mut expr: Box<Expr<'a>>,
     ) -> Result<Object, RuntimeError>
-        where
-            'b: 'a,
+    where
+        'b: 'a,
     {
         while !matches!(*expr, Expr::Literal { .. }) {
             expr = Box::new(self.visit_print_stmt(expr)?);
@@ -187,19 +191,29 @@ impl Visitor for Interpreter {
     fn visit_grouping(&self, expr: Box<Expr>) -> Result<Object, RuntimeError> {
         self.ensure_literal(expr)
     }
-    fn visit_expr_stmt(&self, expr: Box<Expr>) -> Result<Expr, RuntimeError> {
-        match *expr { 
-            Expr::Assign {identifier, value} => {
-                let obj = self.ensure_literal(value)?;
-                self.environment.borrow_mut().set_var(identifier.clone(), obj.clone());
-                Ok(Expr::Assign {
-                    identifier, value: Box::new(Expr::Literal {value: obj})
-                })
-            }
-            _ => unreachable!()
-        }
+    fn visit_assignment(
+        &self,
+        identifier: String,
+        value: Box<Expr>,
+    ) -> Result<Expr, RuntimeError> {
+        let obj = self.ensure_literal(value)?;
+        self.environment
+            .borrow_mut()
+            .set_var(identifier.clone(), obj.clone());
+        Ok(Expr::Assign {
+            identifier,
+            value: Box::new(Expr::Literal { value: obj }),
+        })
     }
 
+    fn visit_expr_stmt(&self, expr: Box<Expr>) -> Result<Expr, RuntimeError> {
+        match *expr {
+            Expr::Assign { identifier, value } => {
+                self.visit_assignment(identifier, value)
+            }
+            _ => unreachable!(),
+        }
+    }
 
     fn visit_print_stmt(&self, expr: Box<Expr>) -> Result<Expr, RuntimeError> {
         match *expr {
@@ -223,39 +237,49 @@ impl Visitor for Interpreter {
             Expr::Variable { identifier: value } => {
                 let var_res = self.environment.borrow().get_var(value)?.clone();
                 Ok(Expr::Literal { value: var_res })
-            },
-            _ => unreachable!()
+            }
+            Expr::Assign { identifier, value } => {
+                let assignment = self.visit_assignment(identifier, value)?;
+                match assignment {
+                    Expr::Assign { identifier, value } => Ok(*value),
+                    _ => unreachable!(),
+                }
+            }
         }
     }
 
     fn visit_stmt(&self, stmt: Statement) -> Result<Expr, RuntimeError> {
         match stmt {
             Statement::PrintStmt(expr) => self.visit_print_stmt(Box::new(expr)),
-            Statement::ExprStmt(expr) => self.visit_expr_stmt(Box::new(expr))
+            Statement::ExprStmt(expr) => self.visit_expr_stmt(Box::new(expr)),
         }
     }
     fn visit_var_decl(&self, decl: Box<Expr>) -> Result<Expr, RuntimeError> {
         match *decl {
             Expr::Unary { operator, right } => match *right {
                 Expr::Variable { identifier } => {
-                    self.environment.borrow_mut().set_var(
-                        identifier.clone(), Object::Nil,
-                    );
+                    self.environment
+                        .borrow_mut()
+                        .set_var(identifier.clone(), Object::Nil);
                     Ok(Expr::Variable { identifier })
                 }
-                Expr::Binary { operator, left, right } => {
+                Expr::Binary {
+                    operator,
+                    left,
+                    right,
+                } => {
                     let value = self.ensure_literal(right)?;
                     if let Expr::Variable { identifier } = *left {
-                        self.environment.borrow_mut().set_var(
-                            identifier.clone(), value.clone(),
-                        );
+                        self.environment
+                            .borrow_mut()
+                            .set_var(identifier.clone(), value.clone());
                         return Ok(Expr::Variable { identifier });
                     }
                     unreachable!();
                 }
-                _ => unreachable!()
+                _ => unreachable!(),
             },
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
 }
