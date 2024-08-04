@@ -142,7 +142,7 @@ impl<'a, 'b> Scanner<'a, 'b> {
 
         let str = &std::str::from_utf8(&self.source[self.start..self.current]).unwrap();
         match try_get_keyword(str) {
-            None => self.add_token(IDENTIFIER),
+            None => self.add_token_with_literal(IDENTIFIER, String::from(*str)),
             Some(token) => self.add_token(token),
         }
     }

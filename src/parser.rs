@@ -2,18 +2,34 @@ use std::cell::RefCell;
 use std::fmt::{Debug, Display, Formatter};
 
 use crate::Lox;
+use crate::parser::Declaration::VarDecl;
 use crate::parser::Expr::{Binary, Grouping, Literal, Unary};
 use crate::token::{Token, TokenType};
-use crate::token::TokenType::{BANG, BANG_EQUAL, EOF, EQUAL_EQUAL, FALSE, GREATER, GREATER_EQUAL, LEFT_PAREN, LESS, LESS_EQUAL, MINUS, NIL, NUMBER, PLUS, PRINT, RIGHT_PAREN, SEMICOLON, SLASH, STAR, STRING, TRUE};
+use crate::token::TokenType::{BANG, BANG_EQUAL, EOF, EQUAL, EQUAL_EQUAL, FALSE, GREATER, GREATER_EQUAL, IDENTIFIER, LEFT_PAREN, LESS, LESS_EQUAL, MINUS, NIL, NUMBER, PLUS, PRINT, RIGHT_PAREN, SEMICOLON, SLASH, STAR, STRING, TRUE, VAR};
+
+pub enum Declaration<'a> {
+    VarDecl(Expr<'a>),
+    Statement(Statement<'a>),
+}
+
+impl<'a> Display for Declaration<'a> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            VarDecl(expr) => write!(f, "{};", expr),
+            Declaration::Statement(expr) => write!(f, "{}", expr),
+        }
+    }
+}
+
 
 pub enum Statement<'a> {
     ExprStmt(Expr<'a>),
-    PrintStmt(Expr<'a>)
+    PrintStmt(Expr<'a>),
 }
 
 impl<'a> Display for Statement<'a> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self { 
+        match self {
             Statement::ExprStmt(expr) => write!(f, "{};", expr),
             Statement::PrintStmt(expr) => write!(f, "print {};", expr)
         }
@@ -72,11 +88,13 @@ impl<'a> Display for Expr<'a> {
         }
     }
 }
+
 pub enum Object {
     Number(f32),
     String(String),
     Boolean(bool),
     Nil,
+    Identifier(String),
 }
 
 impl Display for Object {
@@ -92,6 +110,7 @@ impl Display for Object {
             }
             Object::String(s) => write!(f, "{}", s),
             Object::Boolean(b) => write!(f, "{}", b),
+            Object::Identifier(s) => write!(f, "{}", s)
         }
     }
 }
@@ -158,19 +177,53 @@ impl<'a, 'b> Parser<'a, 'b> {
         }
         self.lox.error(self.peek(), message)
     }
-    pub(crate) fn parse(&self) -> Vec<Statement> {
-        let mut stmts = vec![];
+
+    pub(crate) fn parse(&self) -> Vec<Declaration> {
+        let mut decls = vec![];
         while !self.is_at_end() {
-            stmts.push(self.statement());
+            decls.push(self.declaration());
         }
-        stmts
+        decls
     }
-    
+
+    fn declaration(&self) -> Declaration {
+        if self.match_token(&[VAR]) {
+            return VarDecl(self.vardecl());
+        }
+        return Declaration::Statement(self.statement());
+    }
+
+    fn vardecl(&self) -> Expr {
+        let var_operator = self.previous();
+        let primary = self.primary();
+        return if !self.match_token(&[EQUAL]) {
+            self.consume(SEMICOLON, "Error: missing semicolon at end".into());
+            Unary {
+                operator: var_operator,
+                right: Box::new(primary),
+            }
+        } else {
+            let operator = self.previous();
+            let expr = self.expression();
+            self.consume(SEMICOLON, "Error: missing semicolon at end".into());
+            Unary {
+                operator: var_operator,
+                right: Box::new(
+                    Binary {
+                        left: Box::new(primary),
+                        operator,
+                        right: Box::new(expr),
+                    }
+                ),
+            }
+        };
+    }
+
     fn statement(&self) -> Statement {
         if self.match_token(&[PRINT]) {
-           let expr = self.expression();
-           self.consume(SEMICOLON, "Error: missing semicolon at end".into());
-           return Statement::PrintStmt(expr);
+            let expr = self.expression();
+            self.consume(SEMICOLON, "Error: missing semicolon at end".into());
+            return Statement::PrintStmt(expr);
         }
         let expr = self.expression();
         self.consume(SEMICOLON, "Error: missing semicolon at end".into());
@@ -276,6 +329,10 @@ impl<'a, 'b> Parser<'a, 'b> {
 
         if self.match_token(&[NIL]) {
             return Literal { value: Object::Nil };
+        }
+
+        if self.match_token(&[IDENTIFIER]) {
+            return Literal { value: Object::Identifier(self.previous().literal.clone()) };
         }
 
         if self.match_token(&[LEFT_PAREN]) {
