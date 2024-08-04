@@ -1,7 +1,7 @@
 use crate::token::TokenType::{
-    BANG, BANG_EQUAL, COMMA, DOT, EOF, EQUAL, EQUAL_EQUAL, GREATER, GREATER_EQUAL, IDENTIFIER,
-    LEFT_BRACE, LEFT_PAREN, LESS, LESS_EQUAL, MINUS, NUMBER, PLUS, RIGHT_BRACE, RIGHT_PAREN,
-    SEMICOLON, SLASH, STAR, STRING,
+    BANG, BANG_EQUAL, COMMA, DOT, EOF, EQUAL, EQUAL_EQUAL, GREATER, GREATER_EQUAL,
+    IDENTIFIER, LEFT_BRACE, LEFT_PAREN, LESS, LESS_EQUAL, MINUS, NUMBER, PLUS,
+    RIGHT_BRACE, RIGHT_PAREN, SEMICOLON, SLASH, STAR, STRING,
 };
 use crate::token::{try_get_keyword, Token, TokenType};
 use crate::Lox;
@@ -125,7 +125,8 @@ impl<'a, 'b> Scanner<'a, 'b> {
                 self.advance();
             }
         }
-        let str_repr = std::str::from_utf8(&self.source[self.start..self.current]).unwrap();
+        let str_repr =
+            std::str::from_utf8(&self.source[self.start..self.current]).unwrap();
         let double = str_repr.parse::<f32>().unwrap();
         let double = if double.fract() == 0.0 {
             format!("{:.1}", double)
@@ -205,9 +206,10 @@ impl<'a, 'b> Scanner<'a, 'b> {
             b'"' => self.add_string(),
             b'0'..=b'9' => self.add_number(),
             b'a'..=b'z' | b'A'..=b'Z' | b'_' => self.add_identifier_or_reserved_words(),
-            ch => self
-                .lox
-                .report(self.line, "Unexpected character: ", (ch as char).into()),
+            ch => {
+                self.lox
+                    .report(self.line, "Unexpected character: ", (ch as char).into())
+            }
         }
     }
 }

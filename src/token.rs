@@ -1,4 +1,5 @@
 use std::fmt::{Display, Formatter};
+
 use crate::token::TokenType::NIL;
 
 #[derive(Debug, PartialEq, Copy, Clone)]
@@ -94,12 +95,17 @@ pub struct Token<'a> {
 
 impl<'a> Token<'a> {
     pub(crate) fn default() -> TokenType {
-       NIL
+        NIL
     }
 }
 
 impl<'a> Token<'a> {
-    pub fn new(token_type: TokenType, lexeme: &'a [u8], literal: String, line: usize) -> Self {
+    pub fn new(
+        token_type: TokenType,
+        lexeme: &'a [u8],
+        literal: String,
+        line: usize,
+    ) -> Self {
         Token {
             token_type,
             lexeme,

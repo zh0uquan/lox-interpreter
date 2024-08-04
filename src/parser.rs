@@ -1,11 +1,14 @@
 use std::cell::RefCell;
 use std::fmt::{Debug, Display, Formatter};
 
-use crate::Lox;
-use crate::parser::Declaration::VarDecl;
-use crate::parser::Expr::{Binary, Grouping, Literal, Unary};
+use crate::parser::Expr::{Binary, Grouping, Literal, Unary, Variable};
+use crate::token::TokenType::{
+    BANG, BANG_EQUAL, EOF, EQUAL, EQUAL_EQUAL, FALSE, GREATER, GREATER_EQUAL, IDENTIFIER,
+    LEFT_PAREN, LESS, LESS_EQUAL, MINUS, NIL, NUMBER, PLUS, PRINT, RIGHT_PAREN,
+    SEMICOLON, SLASH, STAR, STRING, TRUE, VAR,
+};
 use crate::token::{Token, TokenType};
-use crate::token::TokenType::{BANG, BANG_EQUAL, EOF, EQUAL, EQUAL_EQUAL, FALSE, GREATER, GREATER_EQUAL, IDENTIFIER, LEFT_PAREN, LESS, LESS_EQUAL, MINUS, NIL, NUMBER, PLUS, PRINT, RIGHT_PAREN, SEMICOLON, SLASH, STAR, STRING, TRUE, VAR};
+use crate::Lox;
 
 pub enum Declaration<'a> {
     VarDecl(Expr<'a>),
@@ -15,12 +18,11 @@ pub enum Declaration<'a> {
 impl<'a> Display for Declaration<'a> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            VarDecl(expr) => write!(f, "{};", expr),
+            Declaration::VarDecl(expr) => write!(f, "{};", expr),
             Declaration::Statement(expr) => write!(f, "{}", expr),
         }
     }
 }
-
 
 pub enum Statement<'a> {
     ExprStmt(Expr<'a>),
@@ -31,11 +33,10 @@ impl<'a> Display for Statement<'a> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Statement::ExprStmt(expr) => write!(f, "{};", expr),
-            Statement::PrintStmt(expr) => write!(f, "print {};", expr)
+            Statement::PrintStmt(expr) => write!(f, "print {};", expr),
         }
     }
 }
-
 
 pub enum Expr<'a> {
     Binary {
@@ -53,6 +54,9 @@ pub enum Expr<'a> {
         operator: &'a Token<'a>,
         right: Box<Expr<'a>>,
     },
+    Variable {
+        value: String
+    }
 }
 
 impl<'a> Display for Expr<'a> {
@@ -84,11 +88,13 @@ impl<'a> Display for Expr<'a> {
                     String::from_utf8_lossy(operator.lexeme),
                     right
                 )
-            }
+            },
+            Variable { value } => write!(f, "variable {}", value )
         }
     }
 }
 
+#[derive(Clone)]
 pub enum Object {
     Number(f32),
     String(String),
@@ -110,7 +116,7 @@ impl Display for Object {
             }
             Object::String(s) => write!(f, "{}", s),
             Object::Boolean(b) => write!(f, "{}", b),
-            Object::Identifier(s) => write!(f, "{}", s)
+            Object::Identifier(s) => write!(f, "{}", s),
         }
     }
 }
@@ -121,7 +127,7 @@ impl Debug for Object {
             Object::Number(n) => {
                 write!(f, "{}", n)
             }
-            _ => write!(f, "{}", self)
+            _ => write!(f, "{}", self),
         }
     }
 }
@@ -188,7 +194,7 @@ impl<'a, 'b> Parser<'a, 'b> {
 
     fn declaration(&self) -> Declaration {
         if self.match_token(&[VAR]) {
-            return VarDecl(self.vardecl());
+            return Declaration::VarDecl(self.vardecl());
         }
         return Declaration::Statement(self.statement());
     }
@@ -208,13 +214,11 @@ impl<'a, 'b> Parser<'a, 'b> {
             self.consume(SEMICOLON, "Error: missing semicolon at end".into());
             Unary {
                 operator: var_operator,
-                right: Box::new(
-                    Binary {
-                        left: Box::new(primary),
-                        operator,
-                        right: Box::new(expr),
-                    }
-                ),
+                right: Box::new(Binary {
+                    left: Box::new(primary),
+                    operator,
+                    right: Box::new(expr),
+                }),
             }
         };
     }
@@ -332,7 +336,9 @@ impl<'a, 'b> Parser<'a, 'b> {
         }
 
         if self.match_token(&[IDENTIFIER]) {
-            return Literal { value: Object::Identifier(self.previous().literal.clone()) };
+            return Variable {
+                value: String::from_utf8_lossy(self.previous().lexeme).into(),
+            };
         }
 
         if self.match_token(&[LEFT_PAREN]) {

@@ -1,9 +1,11 @@
 use std::cell::RefCell;
 use std::env;
 use std::fs;
+use crate::parser::Expr;
 
 use crate::token::{Token, TokenType};
 
+mod enviornment;
 mod interpreter;
 mod parser;
 mod scanner;
@@ -75,22 +77,22 @@ impl Lox {
                 let tokens = scanner.scan_tokens();
 
                 let parser = parser::Parser::new(tokens, self);
-                let parsed_stmts = parser.parse();
-                // let interpreter = interpreter::Interpreter::new();
-                // match interpreter.interpret(parsed_stmts) {
-                //     Ok(exprs) => {
-                //         exprs.iter().for_each(|expr| 
-                //             match expr {
-                //                 Literal { value: obj } => println!("{:?}", obj),
-                //                 _ => unreachable!()
-                //             }
-                //         );
-                //     }
-                //     Err(err) => {
-                //         println!("{}", err);
-                //         std::process::exit(70);
-                //     }
-                // };
+                let res = parser.parse();
+                for r in res.iter() {
+                    println!("{}", r);
+                }
+                let interpreter = interpreter::Interpreter::new();
+                match interpreter.interpret(res) {
+                    Ok(exprs) => {
+                        exprs.iter().for_each(|expr|
+                            println!("{}", expr)
+                        );
+                    }
+                    Err(err) => {
+                        println!("{}", err);
+                        std::process::exit(70);
+                    }
+                };
                 if *self.has_error.borrow() {
                     std::process::exit(65);
                 }
