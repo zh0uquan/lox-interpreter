@@ -4,6 +4,7 @@ use std::rc::Rc;
 
 use crate::environment::Environment;
 use crate::parser::{Declaration, Expr, Object, Statement};
+use crate::parser::Expr::Literal;
 use crate::token::{Token, TokenType};
 
 #[derive(Debug)]
@@ -38,6 +39,8 @@ trait Visitor {
         right: Box<Expr>,
     ) -> Result<Object, RuntimeError>;
     fn visit_grouping(&self, expr: Box<Expr>) -> Result<Object, RuntimeError>;
+    fn visit_expr_stmt(&self, expr: Box<Expr>) -> Result<Expr, RuntimeError>;
+
     fn visit_print_stmt(&self, expr: Box<Expr>) -> Result<Expr, RuntimeError>;
     fn visit_stmt(&self, stmts: Statement) -> Result<Expr, RuntimeError>;
     fn visit_var_decl(&self, decl: Box<Expr>) -> Result<Expr, RuntimeError>;
@@ -185,6 +188,19 @@ impl Visitor for Interpreter {
     fn visit_grouping(&self, expr: Box<Expr>) -> Result<Object, RuntimeError> {
         self.ensure_literal(expr)
     }
+    fn visit_expr_stmt(&self, expr: Box<Expr>) -> Result<Expr, RuntimeError> {
+        match *expr { 
+            Expr::Assign {identifier, value} => {
+                let obj = self.ensure_literal(value)?;
+                self.environment.borrow_mut().set_var(identifier.clone(), obj.clone());
+                Ok(Expr::Assign {
+                    identifier, value: Box::new(Literal {value: obj})
+                })
+            }
+            _ => unreachable!()
+        }
+    }
+
 
     fn visit_print_stmt(&self, expr: Box<Expr>) -> Result<Expr, RuntimeError> {
         match *expr {
@@ -205,35 +221,36 @@ impl Visitor for Interpreter {
                 let value = self.visit_grouping(expression)?;
                 Ok(Expr::Literal { value })
             }
-            Expr::Variable { value } => {
+            Expr::Variable { identifier: value } => {
                 let var_res = self.environment.borrow().get_var(value)?.clone();
                 Ok(Expr::Literal { value: var_res })
-            }
+            },
+            _ => unreachable!()
         }
     }
 
     fn visit_stmt(&self, stmt: Statement) -> Result<Expr, RuntimeError> {
         match stmt {
             Statement::PrintStmt(expr) => self.visit_print_stmt(Box::new(expr)),
-            Statement::ExprStmt(expr) => unreachable!()
+            Statement::ExprStmt(expr) => self.visit_expr_stmt(Box::new(expr))
         }
     }
     fn visit_var_decl(&self, decl: Box<Expr>) -> Result<Expr, RuntimeError> {
         match *decl {
             Expr::Unary { operator, right } => match *right {
-                Expr::Variable { value: identifier } => {
+                Expr::Variable { identifier } => {
                     self.environment.borrow_mut().set_var(
                         identifier.clone(), Object::Nil,
                     );
-                    Ok(Expr::Variable { value: identifier })
+                    Ok(Expr::Variable { identifier })
                 }
                 Expr::Binary { operator, left, right } => {
                     let value = self.ensure_literal(right)?;
-                    if let Expr::Variable { value: identifier } = *left {
+                    if let Expr::Variable { identifier } = *left {
                         self.environment.borrow_mut().set_var(
                             identifier.clone(), value.clone(),
                         );
-                        return Ok(Expr::Variable { value: identifier });
+                        return Ok(Expr::Variable { identifier });
                     }
                     unreachable!();
                 }

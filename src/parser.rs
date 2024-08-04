@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use std::fmt::{Debug, Display, Formatter};
 
-use crate::parser::Expr::{Binary, Grouping, Literal, Unary, Variable};
+use crate::parser::Expr::{Binary, Grouping, Literal, Unary, Variable, Assign};
 use crate::token::TokenType::{
     BANG, BANG_EQUAL, EOF, EQUAL, EQUAL_EQUAL, FALSE, GREATER, GREATER_EQUAL, IDENTIFIER,
     LEFT_PAREN, LESS, LESS_EQUAL, MINUS, NIL, NUMBER, PLUS, PRINT, RIGHT_PAREN,
@@ -55,12 +55,12 @@ pub enum Expr<'a> {
         right: Box<Expr<'a>>,
     },
     Variable {
-        value: String
+        identifier: String
     },
-    // Assign {
-    //     operator: &'a Token<'a>,
-    //     value: String
-    // }
+    Assign {
+        identifier: String,
+        value: Box<Expr<'a>>
+    }
 }
 
 impl<'a> Display for Expr<'a> {
@@ -93,7 +93,8 @@ impl<'a> Display for Expr<'a> {
                     right
                 )
             },
-            Variable { value } => write!(f, "variable {}", value )
+            Variable { identifier: value } => write!(f, "variable {}", value ),
+            Assign { identifier, value } => write!(f, "variable {:?} = {}", identifier, value)
         }
     }
 }
@@ -104,7 +105,6 @@ pub enum Object {
     String(String),
     Boolean(bool),
     Nil,
-    Identifier(String),
 }
 
 impl Display for Object {
@@ -120,7 +120,6 @@ impl Display for Object {
             }
             Object::String(s) => write!(f, "{}", s),
             Object::Boolean(b) => write!(f, "{}", b),
-            Object::Identifier(s) => write!(f, "{}", s),
         }
     }
 }
@@ -239,7 +238,21 @@ impl<'a, 'b> Parser<'a, 'b> {
     }
 
     fn expression(&self) -> Expr {
-        self.equality()
+        self.assignment()
+    }
+
+    fn assignment(&self) -> Expr {
+        let expr = self.equality();
+        if self.match_token(&[EQUAL]) {
+            let equal = self.previous();
+            let value = self.assignment();
+
+            if let Variable { identifier } = expr {
+                return Assign { identifier, value: Box::new(value)}
+            }
+            self.lox.error(equal, "Invalid assignment target.".into());
+        }
+        expr
     }
 
     fn equality(&self) -> Expr {
@@ -341,7 +354,7 @@ impl<'a, 'b> Parser<'a, 'b> {
 
         if self.match_token(&[IDENTIFIER]) {
             return Variable {
-                value: String::from_utf8_lossy(self.previous().lexeme).into(),
+                identifier: String::from_utf8_lossy(self.previous().lexeme).into(),
             };
         }
 
