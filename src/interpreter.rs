@@ -241,7 +241,10 @@ impl Visitor for Interpreter {
             Expr::Assign { identifier, value } => {
                 let assignment = self.visit_assignment(identifier, value)?;
                 match assignment {
-                    Expr::Assign { identifier: _, value } => Ok(*value),
+                    Expr::Assign {
+                        identifier: _,
+                        value,
+                    } => Ok(*value),
                     _ => unreachable!(),
                 }
             }
