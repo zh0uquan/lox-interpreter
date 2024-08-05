@@ -4,21 +4,34 @@ use crate::token::TokenType::VAR;
 use std::collections::HashMap;
 
 pub(crate) struct Environment {
-    var_map: HashMap<String, Object>,
+    _map: HashMap<String, Object>,
+    enclosing: Option<Box<Environment>>,
 }
 impl Environment {
     pub fn new() -> Self {
         Environment {
-            var_map: HashMap::new(),
+            _map: HashMap::new(),
+            enclosing: None,
         }
     }
-    pub fn get_var(&self, identifier: String) -> Result<&Object, RuntimeError> {
-        self.var_map.get(&identifier).ok_or_else(|| {
-            RuntimeError::new(format!("Undefined variable {identifier}."), VAR)
-        })
+    pub fn get(&self, identifier: String) -> Result<&Object, RuntimeError> {
+        self._map
+            .get(&identifier)
+            .or_else(|| {
+                self.enclosing
+                    .as_ref()
+                    .and_then(|e| e.get(identifier.clone()).ok())
+            })
+            .ok_or_else(|| {
+                RuntimeError::new(format!("Undefined variable {identifier}."), VAR)
+            })
     }
 
-    pub fn set_var(&mut self, identifier: String, object: Object) {
-        self.var_map.insert(identifier, object);
+    pub fn set(&mut self, identifier: String, object: Object) {
+        self._map.insert(identifier.clone(), object.clone());
+
+        if self.enclosing.is_some() {
+            self.enclosing.as_mut().unwrap().set(identifier, object)
+        }
     }
 }

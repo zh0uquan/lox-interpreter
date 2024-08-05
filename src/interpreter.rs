@@ -30,7 +30,6 @@ trait Visitor {
         operator: &Token,
         right: Box<Expr>,
     ) -> Result<Object, RuntimeError>;
-    fn visit_expr(&self, expr: Box<Expr>) -> Result<Object, RuntimeError>;
     fn visit_binary(
         &self,
         operator: &Token,
@@ -46,7 +45,13 @@ trait Visitor {
     fn visit_expr_stmt(&self, expr: Box<Expr>) -> Result<Expr, RuntimeError>;
 
     fn visit_print_stmt(&self, expr: Box<Expr>) -> Result<Expr, RuntimeError>;
-    fn visit_stmt(&self, stmts: Statement) -> Result<Expr, RuntimeError>;
+
+    fn visit_block_stmt(
+        &self,
+        exprs: Vec<Declaration>,
+    ) -> Result<Vec<Expr>, RuntimeError>;
+
+    fn visit_stmt(&self, stmts: Statement) -> Result<Vec<Expr>, RuntimeError>;
     fn visit_var_decl(&self, decl: Box<Expr>) -> Result<Expr, RuntimeError>;
 }
 
@@ -63,15 +68,21 @@ impl Interpreter {
 
     pub(crate) fn interpret(
         &self,
-        declarations: Vec<Declaration>,
+        stmts: Vec<Declaration>,
     ) -> Result<Vec<Expr>, RuntimeError> {
-        declarations
+        Ok(stmts
             .into_iter()
-            .map(|decl| match decl {
-                Declaration::VarDecl(decl) => self.visit_var_decl(Box::new(decl)),
-                Declaration::Statement(stmt) => self.visit_stmt(stmt),
+            .map(|stmt| match stmt {
+                Declaration::Statement(expr) => self.visit_stmt(expr),
+                Declaration::VarDecl(expr) => {
+                    let result = self.visit_var_decl(Box::new(expr))?;
+                    Ok(vec![result])
+                }
             })
-            .collect()
+            .collect::<Result<Vec<Vec<Expr>>, RuntimeError>>()?
+            .into_iter()
+            .flatten()
+            .collect())
     }
 
     fn ensure_literal<'a, 'b>(
@@ -123,17 +134,6 @@ impl Visitor for Interpreter {
             )),
         }
     }
-    fn visit_expr(&self, expr: Box<Expr>) -> Result<Object, RuntimeError> {
-        if let Expr::Literal { value } = *expr {
-            Ok(value)
-        } else {
-            Err(RuntimeError::new(
-                "Expected literal expression.".to_string(),
-                Token::default(),
-            ))
-        }
-    }
-
     fn visit_binary(
         &self,
         operator: &Token,
@@ -199,7 +199,7 @@ impl Visitor for Interpreter {
         let obj = self.ensure_literal(value)?;
         self.environment
             .borrow_mut()
-            .set_var(identifier.clone(), obj.clone());
+            .set(identifier.clone(), obj.clone());
         Ok(Expr::Assign {
             identifier,
             value: Box::new(Expr::Literal { value: obj }),
@@ -235,7 +235,7 @@ impl Visitor for Interpreter {
                 Ok(Expr::Literal { value })
             }
             Expr::Variable { identifier: value } => {
-                let var_res = self.environment.borrow().get_var(value)?.clone();
+                let var_res = self.environment.borrow().get(value)?.clone();
                 Ok(Expr::Literal { value: var_res })
             }
             Expr::Assign { identifier, value } => {
@@ -251,19 +251,47 @@ impl Visitor for Interpreter {
         }
     }
 
-    fn visit_stmt(&self, stmt: Statement) -> Result<Expr, RuntimeError> {
+    fn visit_block_stmt(
+        &self,
+        decls: Vec<Declaration>,
+    ) -> Result<Vec<Expr>, RuntimeError> {
+        let mut results = vec![];
+        for decl in decls {
+            match decl {
+                Declaration::VarDecl(expr) => {
+                    let result = self.visit_var_decl(Box::new(expr))?;
+                    results.push(result);
+                }
+                Declaration::Statement(stmt) => {
+                    let stmt_results = self.visit_stmt(stmt)?;
+                    results.extend(stmt_results);
+                }
+            }
+        }
+        Ok(results)
+    }
+
+    fn visit_stmt(&self, stmt: Statement) -> Result<Vec<Expr>, RuntimeError> {
         match stmt {
-            Statement::PrintStmt(expr) => self.visit_print_stmt(Box::new(expr)),
-            Statement::ExprStmt(expr) => self.visit_expr_stmt(Box::new(expr)),
+            Statement::PrintStmt(expr) => {
+                let result = self.visit_print_stmt(Box::new(expr))?;
+                Ok(vec![result])
+            }
+            Statement::ExprStmt(expr) => {
+                let result = self.visit_expr_stmt(Box::new(expr))?;
+                Ok(vec![result])
+            }
+            Statement::Block(decls) => self.visit_block_stmt(decls),
         }
     }
+
     fn visit_var_decl(&self, decl: Box<Expr>) -> Result<Expr, RuntimeError> {
         match *decl {
             Expr::Unary { operator: _, right } => match *right {
                 Expr::Variable { identifier } => {
                     self.environment
                         .borrow_mut()
-                        .set_var(identifier.clone(), Object::Nil);
+                        .set(identifier.clone(), Object::Nil);
                     Ok(Expr::Variable { identifier })
                 }
                 Expr::Binary {
@@ -275,7 +303,7 @@ impl Visitor for Interpreter {
                     if let Expr::Variable { identifier } = *left {
                         self.environment
                             .borrow_mut()
-                            .set_var(identifier.clone(), value.clone());
+                            .set(identifier.clone(), value.clone());
                         return Ok(Expr::Variable { identifier });
                     }
                     unreachable!();

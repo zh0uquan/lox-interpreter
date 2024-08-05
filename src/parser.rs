@@ -4,8 +4,8 @@ use std::fmt::{Debug, Display, Formatter};
 use crate::parser::Expr::{Assign, Binary, Grouping, Literal, Unary, Variable};
 use crate::token::TokenType::{
     BANG, BANG_EQUAL, EOF, EQUAL, EQUAL_EQUAL, FALSE, GREATER, GREATER_EQUAL, IDENTIFIER,
-    LEFT_PAREN, LESS, LESS_EQUAL, MINUS, NIL, NUMBER, PLUS, PRINT, RIGHT_PAREN,
-    SEMICOLON, SLASH, STAR, STRING, TRUE, VAR,
+    LEFT_BRACE, LEFT_PAREN, LESS, LESS_EQUAL, MINUS, NIL, NUMBER, PLUS, PRINT,
+    RIGHT_BRACE, RIGHT_PAREN, SEMICOLON, SLASH, STAR, STRING, TRUE, VAR,
 };
 use crate::token::{Token, TokenType};
 use crate::Lox;
@@ -27,6 +27,7 @@ impl<'a> Display for Declaration<'a> {
 pub enum Statement<'a> {
     ExprStmt(Expr<'a>),
     PrintStmt(Expr<'a>),
+    Block(Vec<Declaration<'a>>),
 }
 
 impl<'a> Display for Statement<'a> {
@@ -34,6 +35,12 @@ impl<'a> Display for Statement<'a> {
         match self {
             Statement::ExprStmt(expr) => write!(f, "{};", expr),
             Statement::PrintStmt(expr) => write!(f, "print {};", expr),
+            Statement::Block(exprs) => {
+                for expr in exprs {
+                    write!(f, " {{ {} }}", expr)?;
+                }
+                Ok(())
+            }
         }
     }
 }
@@ -190,11 +197,20 @@ impl<'a, 'b> Parser<'a, 'b> {
     }
 
     pub(crate) fn parse(&self) -> Vec<Declaration> {
-        let mut decls = vec![];
+        let mut stmts = vec![];
         while !self.is_at_end() {
-            decls.push(self.declaration());
+            stmts.push(self.declaration());
         }
-        decls
+        stmts
+    }
+
+    fn block(&self) -> Vec<Declaration> {
+        let mut stmts = vec![];
+        while !self.is_at_end() && !self.check(RIGHT_BRACE) {
+            stmts.push(self.declaration());
+        }
+        self.consume(RIGHT_BRACE, "Expect '}' after block.".into());
+        stmts
     }
 
     fn declaration(&self) -> Declaration {
@@ -234,6 +250,11 @@ impl<'a, 'b> Parser<'a, 'b> {
             self.consume(SEMICOLON, "Error: missing semicolon at end".into());
             return Statement::PrintStmt(expr);
         }
+        if self.match_token(&[LEFT_BRACE]) {
+            let exprs = self.block();
+            return Statement::Block(exprs);
+        }
+
         let expr = self.expression();
         self.consume(SEMICOLON, "Error: missing semicolon at end".into());
         Statement::ExprStmt(expr)
@@ -370,6 +391,8 @@ impl<'a, 'b> Parser<'a, 'b> {
                 expression: Box::new(expr),
             };
         }
+
+        eprintln!("Unexpected error");
         std::process::exit(65);
     }
 }

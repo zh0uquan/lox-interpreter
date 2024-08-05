@@ -1,7 +1,5 @@
 use std::fmt::{Display, Formatter};
 
-use crate::token::TokenType::NIL;
-
 #[derive(Debug, PartialEq, Copy, Clone)]
 #[allow(non_camel_case_types, dead_code)]
 pub enum TokenType {
@@ -91,12 +89,6 @@ pub struct Token<'a> {
     pub(crate) lexeme: &'a [u8],
     pub(crate) literal: String,
     pub(crate) line: usize,
-}
-
-impl<'a> Token<'a> {
-    pub(crate) fn default() -> TokenType {
-        NIL
-    }
 }
 
 impl<'a> Token<'a> {

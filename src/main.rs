@@ -77,9 +77,6 @@ impl Lox {
 
                 let parser = parser::Parser::new(tokens, self);
                 let res = parser.parse();
-                for r in res.iter() {
-                    println!("{}", r);
-                }
                 let interpreter = interpreter::Interpreter::new();
                 match interpreter.interpret(res) {
                     Ok(exprs) => {
