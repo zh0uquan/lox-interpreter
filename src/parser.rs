@@ -2,11 +2,7 @@ use std::cell::RefCell;
 use std::fmt::{Debug, Display, Formatter};
 
 use crate::parser::Expr::{Assign, Binary, Grouping, Literal, Unary, Variable};
-use crate::token::TokenType::{
-    BANG, BANG_EQUAL, EOF, EQUAL, EQUAL_EQUAL, FALSE, GREATER, GREATER_EQUAL, IDENTIFIER,
-    LEFT_BRACE, LEFT_PAREN, LESS, LESS_EQUAL, MINUS, NIL, NUMBER, PLUS, PRINT,
-    RIGHT_BRACE, RIGHT_PAREN, SEMICOLON, SLASH, STAR, STRING, TRUE, VAR,
-};
+use crate::token::TokenType::{BANG, BANG_EQUAL, ELSE, EOF, EQUAL, EQUAL_EQUAL, FALSE, GREATER, GREATER_EQUAL, IDENTIFIER, IF, LEFT_BRACE, LEFT_PAREN, LESS, LESS_EQUAL, MINUS, NIL, NUMBER, PLUS, PRINT, RIGHT_BRACE, RIGHT_PAREN, SEMICOLON, SLASH, STAR, STRING, TRUE, VAR};
 use crate::token::{Token, TokenType};
 use crate::Lox;
 
@@ -24,17 +20,39 @@ impl<'a> Display for Declaration<'a> {
     }
 }
 
+pub struct If<'a> {
+    pub condition: Box<Expr<'a>>,
+    pub then_branch: Box<Statement<'a>>,
+    pub else_branch: Option<Box<Statement<'a>>>,
+}
+
+impl<'a> Display for If<'a> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "if ({})", self.condition)?;
+        writeln!(f, "then {}", self.then_branch)?;
+        if let Some(else_stmt) = self.else_branch.as_ref() {
+            writeln!(f, "else {}", else_stmt)?;
+        }
+        Ok(())
+    }
+}
+
 pub enum Statement<'a> {
     ExprStmt(Expr<'a>),
     PrintStmt(Expr<'a>),
+    IfStmt(If<'a>),
+    WhileStmt(Expr<'a>),
     Block(Vec<Declaration<'a>>),
 }
+
 
 impl<'a> Display for Statement<'a> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Statement::ExprStmt(expr) => write!(f, "{};", expr),
             Statement::PrintStmt(expr) => write!(f, "print {};", expr),
+            Statement::IfStmt(expr) => write!(f, "{}", expr),
+            Statement::WhileStmt(expr) => write!(f, "{}", expr),
             Statement::Block(exprs) => {
                 for expr in exprs {
                     write!(f, " {{ {} }}", expr)?;
@@ -244,6 +262,21 @@ impl<'a, 'b> Parser<'a, 'b> {
         };
     }
 
+    fn if_(&self) -> If {
+        self.consume(LEFT_PAREN, "Expect '(' after 'if'.".into());
+        let expr = self.expression();
+        self.consume(RIGHT_PAREN, "Expect ')' after if condition.".into());
+        let then_branch = self.statement();
+        let else_branch: Option<Box<Statement>> = if self.match_token(&[ELSE]) {
+            Some(Box::new(self.statement()))
+        } else { None };
+        If {
+            condition: Box::new(expr),
+            then_branch: Box::new(then_branch),
+            else_branch,
+        }
+    }
+
     fn statement(&self) -> Statement {
         if self.match_token(&[PRINT]) {
             let expr = self.expression();
@@ -253,6 +286,11 @@ impl<'a, 'b> Parser<'a, 'b> {
         if self.match_token(&[LEFT_BRACE]) {
             let exprs = self.block();
             return Statement::Block(exprs);
+        }
+
+        if self.match_token(&[IF]) {
+            let expr = self.if_();
+            return Statement::IfStmt(expr);
         }
 
         let expr = self.expression();

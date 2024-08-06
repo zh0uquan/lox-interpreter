@@ -1,9 +1,10 @@
 use std::cell::RefCell;
 use std::fmt::{Display, Formatter};
 use std::rc::Rc;
+use std::vec;
 
 use crate::environment::Environment;
-use crate::parser::{Declaration, Expr, Object, Statement};
+use crate::parser::{Declaration, Expr, If, Object, Statement};
 use crate::token::{Token, TokenType};
 
 #[derive(Debug)]
@@ -59,8 +60,8 @@ impl Interpreter {
         &'b self,
         mut expr: Box<Expr<'a>>,
     ) -> Result<Object, RuntimeError>
-    where
-        'b: 'a,
+        where
+            'b: 'a,
     {
         while !matches!(*expr, Expr::Literal { .. }) {
             expr = Box::new(self.visit_print_stmt(expr)?);
@@ -239,6 +240,31 @@ impl Interpreter {
         Ok(results)
     }
 
+    fn visit_if_stmt(&self, if_: If) -> Result<Vec<Expr>, RuntimeError> {
+        let If { condition, then_branch, else_branch } = if_;
+
+        let is_condition = self.visit_print_stmt(condition)?;
+        let branch = match is_condition {
+            Expr::Literal { value } => match value {
+                Object::Boolean(true) => Ok(Some(then_branch)),
+                Object::Boolean(false) | Object::Nil => Ok(else_branch),
+                _ => Err(RuntimeError {
+                    message: "Expected result of condition to be boolean or nil".into(),
+                    operator: TokenType::IF,
+                })
+            },
+            _ => Err(RuntimeError {
+                message: "Expected result of condition to be boolean or nil".into(),
+                operator: TokenType::IF,
+            })
+        };
+
+        match branch? {
+            None => Ok(vec![Expr::Literal { value: Object::Nil }]),
+            Some(stmt) => self.visit_stmt(*stmt)
+        }
+    }
+
     fn visit_stmt(&self, stmt: Statement) -> Result<Vec<Expr>, RuntimeError> {
         match stmt {
             Statement::PrintStmt(expr) => {
@@ -249,7 +275,12 @@ impl Interpreter {
                 let result = self.visit_expr_stmt(Box::new(expr))?;
                 Ok(vec![result])
             }
+            Statement::IfStmt(if_) => {
+                let result = self.visit_if_stmt(if_)?;
+                Ok(result)
+            }
             Statement::Block(decls) => self.visit_block_stmt(decls),
+            _ => unreachable!()
         }
     }
 
