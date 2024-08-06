@@ -24,36 +24,6 @@ impl Display for RuntimeError {
     }
 }
 
-trait Visitor {
-    fn visit_unary(
-        &self,
-        operator: &Token,
-        right: Box<Expr>,
-    ) -> Result<Object, RuntimeError>;
-    fn visit_binary(
-        &self,
-        operator: &Token,
-        left: Box<Expr>,
-        right: Box<Expr>,
-    ) -> Result<Object, RuntimeError>;
-    fn visit_grouping(&self, expr: Box<Expr>) -> Result<Object, RuntimeError>;
-    fn visit_assignment(
-        &self,
-        identifier: String,
-        value: Box<Expr>,
-    ) -> Result<Expr, RuntimeError>;
-    fn visit_expr_stmt(&self, expr: Box<Expr>) -> Result<Expr, RuntimeError>;
-
-    fn visit_print_stmt(&self, expr: Box<Expr>) -> Result<Expr, RuntimeError>;
-
-    fn visit_block_stmt(
-        &self,
-        exprs: Vec<Declaration>,
-    ) -> Result<Vec<Expr>, RuntimeError>;
-
-    fn visit_stmt(&self, stmts: Statement) -> Result<Vec<Expr>, RuntimeError>;
-    fn visit_var_decl(&self, decl: Box<Expr>) -> Result<Expr, RuntimeError>;
-}
 
 pub(crate) struct Interpreter {
     environment: Rc<RefCell<Environment>>,
@@ -102,9 +72,7 @@ impl Interpreter {
             unreachable!() // We ensured it's a Literal in the loop
         }
     }
-}
 
-impl Visitor for Interpreter {
     fn visit_unary(
         &self,
         operator: &Token,
