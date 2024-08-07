@@ -6,6 +6,7 @@ use std::vec;
 use crate::environment::Environment;
 use crate::parser::{Declaration, Expr, If, Object, Statement};
 use crate::token::{Token, TokenType};
+use crate::token::TokenType::{AND, OR};
 
 #[derive(Debug)]
 pub struct RuntimeError {
@@ -81,15 +82,7 @@ impl Interpreter {
     ) -> Result<Object, RuntimeError> {
         let right_value = self.ensure_literal(right)?;
         match operator.token_type {
-            TokenType::BANG => match right_value {
-                Object::Boolean(b) => Ok(Object::Boolean(!b)),
-                Object::Number(_) => Ok(Object::Boolean(false)),
-                Object::Nil => Ok(Object::Boolean(true)),
-                _ => Err(RuntimeError::new(
-                    "Operand must be a boolean or number.".to_string(),
-                    operator.token_type,
-                )),
-            },
+            TokenType::BANG => Ok(Object::Boolean(!self.is_truthy(right_value))),
             TokenType::MINUS => match right_value {
                 Object::Number(n) => Ok(Object::Number(-n)),
                 _ => Err(RuntimeError::new(
@@ -156,6 +149,14 @@ impl Interpreter {
             )),
         }
     }
+    
+    fn is_truthy(&self, obj: Object) -> bool {
+        match obj {
+            Object::Nil => false,
+            Object::Boolean(b) => b,
+            _ => true
+        }
+    }
 
     fn visit_grouping(&self, expr: Box<Expr>) -> Result<Object, RuntimeError> {
         self.ensure_literal(expr)
@@ -180,8 +181,23 @@ impl Interpreter {
             Expr::Assign { identifier, value } => {
                 self.visit_assignment(identifier, value)
             }
-            _ => unreachable!(),
+            Expr::Logical {
+                left, operator, right
+            } => self.visit_logical(left, operator, right), 
+            _ => unreachable!()
         }
+    }
+    
+    fn visit_logical(&self, left: Box<Expr>, operator: &Token, right: Box<Expr>) -> Result<Expr, RuntimeError> {
+        let left_obj = self.ensure_literal(left)?;
+        if operator.token_type == OR {
+            if self.is_truthy(left_obj.clone()) {
+                return Ok(Expr::Literal { value: left_obj});
+            } 
+        } else if operator.token_type == AND && !self.is_truthy(left_obj.clone()) {
+            return Ok(Expr::Literal {value: left_obj})
+        }
+        return self.visit_print_stmt(right)
     }
 
     fn visit_print_stmt(&self, expr: Box<Expr>) -> Result<Expr, RuntimeError> {
@@ -217,6 +233,9 @@ impl Interpreter {
                     _ => unreachable!(),
                 }
             }
+            Expr::Logical {
+                left, operator, right
+            } => self.visit_logical(left, operator, right)
         }
     }
 
@@ -245,13 +264,9 @@ impl Interpreter {
 
         let is_condition = self.visit_print_stmt(condition)?;
         let branch = match is_condition {
-            Expr::Literal { value } => match value {
-                Object::Boolean(true) => Ok(Some(then_branch)),
-                Object::Boolean(false) | Object::Nil => Ok(else_branch),
-                _ => Err(RuntimeError {
-                    message: "Expected result of condition to be boolean or nil".into(),
-                    operator: TokenType::IF,
-                })
+            Expr::Literal { value } => match self.is_truthy(value) {
+                true => Ok(Some(then_branch)),
+                false => Ok(else_branch),
             },
             _ => Err(RuntimeError {
                 message: "Expected result of condition to be boolean or nil".into(),

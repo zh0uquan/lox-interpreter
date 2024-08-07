@@ -1,8 +1,8 @@
 use std::cell::RefCell;
 use std::fmt::{Debug, Display, Formatter};
 
-use crate::parser::Expr::{Assign, Binary, Grouping, Literal, Unary, Variable};
-use crate::token::TokenType::{BANG, BANG_EQUAL, ELSE, EOF, EQUAL, EQUAL_EQUAL, FALSE, GREATER, GREATER_EQUAL, IDENTIFIER, IF, LEFT_BRACE, LEFT_PAREN, LESS, LESS_EQUAL, MINUS, NIL, NUMBER, PLUS, PRINT, RIGHT_BRACE, RIGHT_PAREN, SEMICOLON, SLASH, STAR, STRING, TRUE, VAR};
+use crate::parser::Expr::{Assign, Binary, Grouping, Literal, Logical, Unary, Variable};
+use crate::token::TokenType::{AND, BANG, BANG_EQUAL, ELSE, EOF, EQUAL, EQUAL_EQUAL, FALSE, GREATER, GREATER_EQUAL, IDENTIFIER, IF, LEFT_BRACE, LEFT_PAREN, LESS, LESS_EQUAL, MINUS, NIL, NUMBER, OR, PLUS, PRINT, RIGHT_BRACE, RIGHT_PAREN, SEMICOLON, SLASH, STAR, STRING, TRUE, VAR};
 use crate::token::{Token, TokenType};
 use crate::Lox;
 
@@ -86,6 +86,11 @@ pub enum Expr<'a> {
         identifier: String,
         value: Box<Expr<'a>>,
     },
+    Logical {
+        left: Box<Expr<'a>>,
+        operator: &'a Token<'a>,
+        right: Box<Expr<'a>>,
+    }
 }
 
 impl<'a> Display for Expr<'a> {
@@ -121,6 +126,19 @@ impl<'a> Display for Expr<'a> {
             Variable { identifier: value } => write!(f, "variable {}", value),
             Assign { identifier, value } => {
                 write!(f, "variable {:?} = {}", identifier, value)
+            }
+            Logical {
+                left,
+                operator,
+                right,
+            } => {
+                write!(
+                    f,
+                    "({} {} {})",
+                    String::from_utf8_lossy(operator.lexeme),
+                    left,
+                    right
+                )
             }
         }
     }
@@ -302,8 +320,36 @@ impl<'a, 'b> Parser<'a, 'b> {
         self.assignment()
     }
 
+    fn or_(&self) -> Expr {
+        let mut expr = self.and_();
+        while self.match_token(&[OR]) {
+            let operator = self.previous();
+            let right = self.and_();
+            expr = Logical {
+                left: Box::new(expr),
+                operator,
+                right: Box::new(right)
+            }
+        }
+        expr
+    }
+
+    fn and_(&self) -> Expr {
+        let mut expr = self.equality();
+        while self.match_token(&[AND]) {
+            let operator = self.previous();
+            let right = self.equality();
+            expr = Logical {
+                left: Box::new(expr),
+                operator,
+                right: Box::new(right)
+            }
+        }
+        expr
+    }
+
     fn assignment(&self) -> Expr {
-        let expr = self.equality();
+        let expr = self.or_();
         if self.match_token(&[EQUAL]) {
             let equal = self.previous();
             let value = self.assignment();
