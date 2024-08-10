@@ -2,10 +2,11 @@ use std::cell::RefCell;
 use std::fmt::{Debug, Display, Formatter};
 
 use crate::parser::Expr::{Assign, Binary, Grouping, Literal, Logical, Unary, Variable};
-use crate::token::TokenType::{AND, BANG, BANG_EQUAL, ELSE, EOF, EQUAL, EQUAL_EQUAL, FALSE, GREATER, GREATER_EQUAL, IDENTIFIER, IF, LEFT_BRACE, LEFT_PAREN, LESS, LESS_EQUAL, MINUS, NIL, NUMBER, OR, PLUS, PRINT, RIGHT_BRACE, RIGHT_PAREN, SEMICOLON, SLASH, STAR, STRING, TRUE, VAR};
+use crate::token::TokenType::{AND, BANG, BANG_EQUAL, ELSE, EOF, EQUAL, EQUAL_EQUAL, FALSE, GREATER, GREATER_EQUAL, IDENTIFIER, IF, LEFT_BRACE, LEFT_PAREN, LESS, LESS_EQUAL, MINUS, NIL, NUMBER, OR, PLUS, PRINT, RIGHT_BRACE, RIGHT_PAREN, SEMICOLON, SLASH, STAR, STRING, TRUE, VAR, WHILE};
 use crate::token::{Token, TokenType};
 use crate::Lox;
 
+#[derive(Clone)]
 pub enum Declaration<'a> {
     VarDecl(Expr<'a>),
     Statement(Statement<'a>),
@@ -20,11 +21,14 @@ impl<'a> Display for Declaration<'a> {
     }
 }
 
+#[derive(Clone)]
 pub struct If<'a> {
     pub condition: Box<Expr<'a>>,
     pub then_branch: Box<Statement<'a>>,
     pub else_branch: Option<Box<Statement<'a>>>,
 }
+
+
 
 impl<'a> Display for If<'a> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -37,11 +41,25 @@ impl<'a> Display for If<'a> {
     }
 }
 
+#[derive(Clone)]
+pub struct While<'a> {
+    pub condition: Box<Expr<'a>>,
+    pub block: Box<Statement<'a>>
+}
+
+impl<'a> Display for While<'a> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "while ({})", self.condition)?;
+        writeln!(f, "{}", self.block)
+    }
+}
+
+#[derive(Clone)]
 pub enum Statement<'a> {
     ExprStmt(Expr<'a>),
     PrintStmt(Expr<'a>),
     IfStmt(If<'a>),
-    WhileStmt(Expr<'a>),
+    WhileStmt(While<'a>),
     Block(Vec<Declaration<'a>>),
 }
 
@@ -63,6 +81,7 @@ impl<'a> Display for Statement<'a> {
     }
 }
 
+#[derive(Clone)]
 pub enum Expr<'a> {
     Binary {
         left: Box<Expr<'a>>,
@@ -280,6 +299,16 @@ impl<'a, 'b> Parser<'a, 'b> {
         };
     }
 
+    fn while_(&self) -> While {
+        self.consume(LEFT_PAREN, "Expect '(' after 'if'.".into());
+        let expr = self.expression();
+        self.consume(RIGHT_PAREN, "Expect ')' after if condition.".into());
+        While {
+            condition: Box::new(expr),
+            block: Box::new(self.statement()),
+        }
+    
+    }
     fn if_(&self) -> If {
         self.consume(LEFT_PAREN, "Expect '(' after 'if'.".into());
         let expr = self.expression();
@@ -307,8 +336,13 @@ impl<'a, 'b> Parser<'a, 'b> {
         }
 
         if self.match_token(&[IF]) {
-            let expr = self.if_();
-            return Statement::IfStmt(expr);
+            let if_ = self.if_();
+            return Statement::IfStmt(if_);
+        }
+        
+        if self.match_token(&[WHILE]) {
+            let while_ = self.while_();
+            return Statement::WhileStmt(while_);
         }
 
         let expr = self.expression();
@@ -479,4 +513,6 @@ impl<'a, 'b> Parser<'a, 'b> {
         eprintln!("Unexpected error");
         std::process::exit(65);
     }
+    
+
 }

@@ -4,9 +4,8 @@ use std::rc::Rc;
 use std::vec;
 
 use crate::environment::Environment;
-use crate::parser::{Declaration, Expr, If, Object, Statement};
+use crate::parser::{Declaration, Expr, If, Object, Statement, While};
 use crate::token::{Token, TokenType};
-use crate::token::TokenType::{AND, OR};
 
 #[derive(Debug)]
 pub struct RuntimeError {
@@ -149,7 +148,7 @@ impl Interpreter {
             )),
         }
     }
-    
+
     fn is_truthy(&self, obj: Object) -> bool {
         match obj {
             Object::Nil => false,
@@ -183,21 +182,21 @@ impl Interpreter {
             }
             Expr::Logical {
                 left, operator, right
-            } => self.visit_logical(left, operator, right), 
+            } => self.visit_logical(left, operator, right),
             _ => unreachable!()
         }
     }
-    
+
     fn visit_logical(&self, left: Box<Expr>, operator: &Token, right: Box<Expr>) -> Result<Expr, RuntimeError> {
         let left_obj = self.ensure_literal(left)?;
-        if operator.token_type == OR {
+        if operator.token_type == TokenType::OR {
             if self.is_truthy(left_obj.clone()) {
-                return Ok(Expr::Literal { value: left_obj});
-            } 
-        } else if operator.token_type == AND && !self.is_truthy(left_obj.clone()) {
-            return Ok(Expr::Literal {value: left_obj})
+                return Ok(Expr::Literal { value: left_obj });
+            }
+        } else if operator.token_type == TokenType::AND && !self.is_truthy(left_obj.clone()) {
+            return Ok(Expr::Literal { value: left_obj });
         }
-        return self.visit_print_stmt(right)
+        return self.visit_print_stmt(right);
     }
 
     fn visit_print_stmt(&self, expr: Box<Expr>) -> Result<Expr, RuntimeError> {
@@ -259,72 +258,98 @@ impl Interpreter {
         Ok(results)
     }
 
-    fn visit_if_stmt(&self, if_: If) -> Result<Vec<Expr>, RuntimeError> {
-        let If { condition, then_branch, else_branch } = if_;
-
+    fn visit_while_stmt(&self, while_: While) -> Result<Vec<Expr>, RuntimeError> {
+        let While { condition, block } = while_;
         let is_condition = self.visit_print_stmt(condition)?;
-        let branch = match is_condition {
-            Expr::Literal { value } => match self.is_truthy(value) {
-                true => Ok(Some(then_branch)),
-                false => Ok(else_branch),
-            },
-            _ => Err(RuntimeError {
+        match is_condition {
+            Expr::Literal { value } => {
+                if self.is_truthy(value.clone()) {
+                    loop {
+                        let exprs = self.visit_stmt(*block.clone())?;
+                        exprs.iter().for_each(|expr| println!("{}", expr));
+                    }
+                }
+                Ok(vec![])
+            }
+            _ => {
+            println!("{}", is_condition);
+            Err(RuntimeError {
                 message: "Expected result of condition to be boolean or nil".into(),
                 operator: TokenType::IF,
             })
-        };
-
-        match branch? {
-            None => Ok(vec![Expr::Literal { value: Object::Nil }]),
-            Some(stmt) => self.visit_stmt(*stmt)
         }
     }
+}
 
-    fn visit_stmt(&self, stmt: Statement) -> Result<Vec<Expr>, RuntimeError> {
-        match stmt {
-            Statement::PrintStmt(expr) => {
-                let result = self.visit_print_stmt(Box::new(expr))?;
-                Ok(vec![result])
-            }
-            Statement::ExprStmt(expr) => {
-                let result = self.visit_expr_stmt(Box::new(expr))?;
-                Ok(vec![result])
-            }
-            Statement::IfStmt(if_) => {
-                let result = self.visit_if_stmt(if_)?;
-                Ok(result)
-            }
-            Statement::Block(decls) => self.visit_block_stmt(decls),
-            _ => unreachable!()
+fn visit_if_stmt(&self, if_: If) -> Result<Vec<Expr>, RuntimeError> {
+    let If { condition, then_branch, else_branch } = if_;
+
+    let is_condition = self.visit_print_stmt(condition)?;
+    let branch = match is_condition {
+        Expr::Literal { value } => match self.is_truthy(value) {
+            true => Ok(Some(then_branch)),
+            false => Ok(else_branch),
+        },
+        _ => Err(RuntimeError {
+            message: "Expected result of condition to be boolean or nil".into(),
+            operator: TokenType::IF,
+        })
+    };
+
+    match branch? {
+        None => Ok(vec![Expr::Literal { value: Object::Nil }]),
+        Some(stmt) => self.visit_stmt(*stmt)
+    }
+}
+
+fn visit_stmt(&self, stmt: Statement) -> Result<Vec<Expr>, RuntimeError> {
+    match stmt {
+        Statement::PrintStmt(expr) => {
+            let result = self.visit_print_stmt(Box::new(expr))?;
+            Ok(vec![result])
+        }
+        Statement::ExprStmt(expr) => {
+            let result = self.visit_expr_stmt(Box::new(expr))?;
+            Ok(vec![result])
+        }
+        Statement::IfStmt(if_) => {
+            let result = self.visit_if_stmt(if_)?;
+            Ok(result)
+        }
+        Statement::Block(decls) => self.visit_block_stmt(decls),
+        Statement::WhileStmt(while_) => {
+            let result = self.visit_while_stmt(while_)?;
+            Ok(result)
         }
     }
+}
 
-    fn visit_var_decl(&self, decl: Box<Expr>) -> Result<Expr, RuntimeError> {
-        match *decl {
-            Expr::Unary { operator: _, right } => match *right {
-                Expr::Variable { identifier } => {
+fn visit_var_decl(&self, decl: Box<Expr>) -> Result<Expr, RuntimeError> {
+    match *decl {
+        Expr::Unary { operator: _, right } => match *right {
+            Expr::Variable { identifier } => {
+                self.environment
+                    .borrow_mut()
+                    .set(identifier.clone(), Object::Nil);
+                Ok(Expr::Variable { identifier })
+            }
+            Expr::Binary {
+                operator: _,
+                left,
+                right,
+            } => {
+                let value = self.ensure_literal(right)?;
+                if let Expr::Variable { identifier } = *left {
                     self.environment
                         .borrow_mut()
-                        .set(identifier.clone(), Object::Nil);
-                    Ok(Expr::Variable { identifier })
+                        .set(identifier.clone(), value.clone());
+                    return Ok(Expr::Variable { identifier });
                 }
-                Expr::Binary {
-                    operator: _,
-                    left,
-                    right,
-                } => {
-                    let value = self.ensure_literal(right)?;
-                    if let Expr::Variable { identifier } = *left {
-                        self.environment
-                            .borrow_mut()
-                            .set(identifier.clone(), value.clone());
-                        return Ok(Expr::Variable { identifier });
-                    }
-                    unreachable!();
-                }
-                _ => unreachable!(),
-            },
+                unreachable!();
+            }
             _ => unreachable!(),
-        }
+        },
+        _ => unreachable!(),
     }
+}
 }
