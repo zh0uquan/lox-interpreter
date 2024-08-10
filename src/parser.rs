@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::fmt::{Debug, Display, Formatter};
 
 use crate::parser::Expr::{Assign, Binary, Grouping, Literal, Logical, Unary, Variable};
-use crate::token::TokenType::{AND, BANG, BANG_EQUAL, ELSE, EOF, EQUAL, EQUAL_EQUAL, FALSE, GREATER, GREATER_EQUAL, IDENTIFIER, IF, LEFT_BRACE, LEFT_PAREN, LESS, LESS_EQUAL, MINUS, NIL, NUMBER, OR, PLUS, PRINT, RIGHT_BRACE, RIGHT_PAREN, SEMICOLON, SLASH, STAR, STRING, TRUE, VAR, WHILE};
+use crate::token::TokenType::{AND, BANG, BANG_EQUAL, ELSE, EOF, EQUAL, EQUAL_EQUAL, FALSE, FOR, GREATER, GREATER_EQUAL, IDENTIFIER, IF, LEFT_BRACE, LEFT_PAREN, LESS, LESS_EQUAL, MINUS, NIL, NUMBER, OR, PLUS, PRINT, RIGHT_BRACE, RIGHT_PAREN, SEMICOLON, SLASH, STAR, STRING, TRUE, VAR, WHILE};
 use crate::token::{Token, TokenType};
 use crate::Lox;
 
@@ -29,7 +29,6 @@ pub struct If<'a> {
 }
 
 
-
 impl<'a> Display for If<'a> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "if ({})", self.condition)?;
@@ -44,7 +43,7 @@ impl<'a> Display for If<'a> {
 #[derive(Clone)]
 pub struct While<'a> {
     pub condition: Box<Expr<'a>>,
-    pub block: Box<Statement<'a>>
+    pub block: Box<Statement<'a>>,
 }
 
 impl<'a> Display for While<'a> {
@@ -53,6 +52,7 @@ impl<'a> Display for While<'a> {
         writeln!(f, "{}", self.block)
     }
 }
+
 
 #[derive(Clone)]
 pub enum Statement<'a> {
@@ -109,7 +109,7 @@ pub enum Expr<'a> {
         left: Box<Expr<'a>>,
         operator: &'a Token<'a>,
         right: Box<Expr<'a>>,
-    }
+    },
 }
 
 impl<'a> Display for Expr<'a> {
@@ -299,15 +299,59 @@ impl<'a, 'b> Parser<'a, 'b> {
         };
     }
 
+    fn for_(&self) -> Statement {
+        self.consume(LEFT_PAREN, "Expect '(' after 'for'.".into());
+        let mut initializer: Option<Declaration> = None;
+        if !self.match_token(&[SEMICOLON]) {
+            initializer = Some(self.declaration());
+        }
+
+        let condition: Expr = if !self.match_token(&[SEMICOLON]) {
+            self.expression()
+        } else {
+            Literal { value: Object::Boolean(true)}
+        };
+        self.consume(SEMICOLON, "Expect ';' after loop condition.".into());
+
+        let mut expr: Option<Expr> = None;
+        if !self.match_token(&[RIGHT_PAREN]) {
+            expr = Some(self.expression());
+        }
+        self.consume(RIGHT_PAREN, "Expect ')' after for clause.".into());
+
+        let mut block_vec = vec![self.statement()];
+        if expr.is_some() {
+            block_vec.push(
+                Statement::ExprStmt(expr.unwrap())
+            );
+        }
+        let block = Statement::Block(
+            block_vec.into_iter().map(Declaration::Statement).collect()
+        );
+        
+        let body = While {
+            condition: Box::new(condition),
+            block: Box::new(block)
+        };
+
+        return if initializer.is_none() {
+            Statement::WhileStmt(body)
+        } else { 
+            Statement::Block(
+                vec![initializer.unwrap(), Declaration::Statement(Statement::WhileStmt(body))]
+            )           
+        }
+
+    }
+
     fn while_(&self) -> While {
-        self.consume(LEFT_PAREN, "Expect '(' after 'if'.".into());
+        self.consume(LEFT_PAREN, "Expect '(' after 'while'.".into());
         let expr = self.expression();
-        self.consume(RIGHT_PAREN, "Expect ')' after if condition.".into());
+        self.consume(RIGHT_PAREN, "Expect ')' after while condition.".into());
         While {
             condition: Box::new(expr),
             block: Box::new(self.statement()),
         }
-    
     }
     fn if_(&self) -> If {
         self.consume(LEFT_PAREN, "Expect '(' after 'if'.".into());
@@ -339,10 +383,14 @@ impl<'a, 'b> Parser<'a, 'b> {
             let if_ = self.if_();
             return Statement::IfStmt(if_);
         }
-        
+
         if self.match_token(&[WHILE]) {
             let while_ = self.while_();
             return Statement::WhileStmt(while_);
+        }
+
+        if self.match_token(&[FOR]) {
+            return self.for_();
         }
 
         let expr = self.expression();
@@ -362,7 +410,7 @@ impl<'a, 'b> Parser<'a, 'b> {
             expr = Logical {
                 left: Box::new(expr),
                 operator,
-                right: Box::new(right)
+                right: Box::new(right),
             }
         }
         expr
@@ -376,7 +424,7 @@ impl<'a, 'b> Parser<'a, 'b> {
             expr = Logical {
                 left: Box::new(expr),
                 operator,
-                right: Box::new(right)
+                right: Box::new(right),
             }
         }
         expr
@@ -513,6 +561,4 @@ impl<'a, 'b> Parser<'a, 'b> {
         eprintln!("Unexpected error");
         std::process::exit(65);
     }
-    
-
 }
